@@ -1,0 +1,13 @@
+---
+snapshot:
+  max_age: 1800
+
+keystore:
+  - "ConsulKeystore"
+  - host: localhost
+    port: 8500
+
+lockagent:
+  - "ConsulLockAgent"
+  - host: localhost
+    port: 8500
