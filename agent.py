@@ -42,7 +42,9 @@ def main():
         # preflight check
         if check_update(ks, config) and la.acquire():
             # start the snapshot process
-            time.sleep(249204)
+            be = backend.get(*config['backend'])
+
+            be.runner()
         else:
             logger.debug('Preflight failure.. skipping run')
 

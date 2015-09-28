@@ -17,7 +17,12 @@ class BaseBackend:
         pass
 
 
-    @staticmethod
-    def runner(backend):
-        print "backend_runner"
-        print "got backend {0}".format(backend)
+    def runner(self):
+        # execute the pre_snapshot function
+        self.pre_snapshot()
+
+        # execute the snapshot function
+        self.snapshot()
+
+        # execute the post_snapshot function
+        self.post_snapshot()

@@ -1,7 +1,7 @@
 from snappy.backend.base import BaseBackend
 
 class MySQLBackend(BaseBackend):
-    def __init__(self):
+    def __init__(self, config):
         pass
 
 

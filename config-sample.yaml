@@ -11,3 +11,9 @@ lockagent:
   - "ConsulLockAgent"
   - host: localhost
     port: 8500
+
+backend:
+  - "MySQLBackend"
+  - host: localhost
+    loadbalancer:
+      host:
