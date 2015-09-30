@@ -27,7 +27,10 @@ class ConsulKeystore(BaseKeystore):
             recurse=True
         )
 
-        return map(lambda x: json.load(StringIO(x['Value'])), snapshots)
+        if snapshots is None:
+            return [{'time':0}]
+        else:
+            return map(lambda x: json.load(StringIO(x['Value'])), snapshots)
 
 
     def add_snapshot(self, **kwargs):

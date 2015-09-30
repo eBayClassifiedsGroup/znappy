@@ -5,17 +5,11 @@ class MySQLBackend(BaseBackend):
         pass
 
 
-    def pre_snapshot(self):
+    def __enter__(self):
         print "pre_snapshot"
 
 
-    def snapshot(self):
-        print "snapshot"
-
-        return "this-would-be-the-time", "this-would-be-the-name"
-
-
-    def post_snapshot(self):
+    def __exit__(self, type, value, tb):
         print "post_snapshot"
 
 
