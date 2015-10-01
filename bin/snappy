@@ -1,0 +1,16 @@
+#!/usr/bin/env python
+"""
+    Usage: snappy-agent [options]
+
+Options:
+    -c FILE, --config FILE  Configuration file to use [default: ./config-sample.yaml]
+"""
+
+from docopt import docopt
+from snappy import agent
+
+if __name__ == "__main__":
+    args = docopt(__doc___)
+
+    if args['agent']:
+        agent.main(args)

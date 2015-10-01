@@ -28,10 +28,8 @@ def check_update(ks, config):
         return False
 
 
-def main():
+def main(args):
     utils.get_logging('snappy-agent')
-
-    args = docopt(__doc__)
 
     utils.logger.debug("Using arguments: {0}".format(args))
 
