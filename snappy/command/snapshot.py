@@ -1,7 +1,7 @@
 """
 Usage:
-    snappy cli
-    snappy cli snapshot list [options]
+    snappy snapshot
+    snappy snapshot list [options]
 
 Options:
     -h, --help                    Display this help
@@ -9,7 +9,8 @@ Options:
     -r, --reverse                 Reverse the sorting of the output
 """
 
-from . import keystore, snapshot, utils
+from snappy import keystore, snapshot
+from snappy.utils import config, logger
 from prettytable import PrettyTable
 
 
@@ -30,13 +31,8 @@ def action_list(args, config):
 
 
 def main(args):
-    utils.get_logging('snappy-cli', args)
-
-    utils.logger.debug("Using arguments: {0}".format(args))
-
-    config = utils.get_config(args['--config'])
-
-    utils.logger.debug("Using configuration: {0}".format(config))
+    logger.debug("Using arguments: {0}".format(args))
+    logger.debug("Using configuration: {0}".format(config))
 
     if args['list']:
         action_list(args, config)

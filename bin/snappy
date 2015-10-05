@@ -9,8 +9,8 @@ Options:
     -d, --debug                 enable debug output
 
 Commands:
-    agent   Run the snapshot agent
-    cli     Command line interface
+    agent       Run the snapshot agent
+    snapshot    Snapshot management
 
 See 'snappy help <command>' for more information on a specific command
 """
@@ -19,7 +19,7 @@ See 'snappy help <command>' for more information on a specific command
 import sys
 sys.path.insert(0, '/home/ubuntu/snappy')
 
-
+from snappy import utils
 from docopt import docopt
 import importlib
 
@@ -37,9 +37,11 @@ if __name__ == "__main__":
     else:
         argv = [args['<command>']] + args['<args>']
 
+    utils.load_config(args['--config'])
+    utils.load_logger("snappy-{}".format(argv[0]), args['--debug'])
 
     try:
-        command = importlib.import_module('{0}.{1}'.format('snappy', argv[0]))
+        command = importlib.import_module('{0}.{1}'.format('snappy.command', argv[0]))
     except ImportError:
         print('Err: command {} not found'.format(argv[0]))
         exit(1)

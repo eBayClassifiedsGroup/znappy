@@ -21,16 +21,21 @@ class ConsulKeystore(BaseKeystore):
         self.consul.session.destroy(self.session_id)
 
 
-    def list_snapshots(self):
+    def _to_json(self, s):
+        return json.load(StringIO(s['Value']))
+
+    def list_snapshots(self, **kwargs):
         index, snapshots = self.consul.kv.get(
             "service/snappy/snapshots/{0}".format(self.node),
             recurse=True
         )
 
-        if snapshots is None:
-            return [{'time':0}]
-        else:
-            return map(lambda x: json.load(StringIO(x['Value'])), snapshots)
+        candidates = map(self._to_json, snapshots)
+
+        for k, v in kwargs.iteritems():
+            candidates = filter(lambda x: x[k] == v, candidates)
+
+        return candidates
 
 
     def add_snapshot(self, **kwargs):
