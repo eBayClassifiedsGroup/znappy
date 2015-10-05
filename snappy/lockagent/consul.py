@@ -27,4 +27,8 @@ class ConsulLockAgent(BaseLockAgent):
 
 
     def release(self):
-        return True
+        return self.consul.kv.put(
+            "service/snappy/.lock",
+            "",
+            release=self.session_id
+        )
