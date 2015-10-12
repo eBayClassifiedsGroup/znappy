@@ -1,12 +1,13 @@
 import time
 from snappy.utils import logger
+from snappy.snapshot.base import BaseSnapshot
 from fabric.api import env, local, output, task, settings
 
 
-class Snapshot:
+class ZFSSnapshot(BaseSnapshot):
     @task
     def zfs_snapshot_clone(self, clone_name):
-        logger.debug('Cloning {0} into {1}'.format(self.name, clone-name))
+        logger.debug('Cloning {0} into {1}'.format(self.name, clone_name))
 
         if local('zfs clone {0} {1}'.format(self.name, clone_name)).return_code != 0:
             raise SnapshotException('Failed to clone snapshot')
@@ -14,7 +15,7 @@ class Snapshot:
 
     @task
     def zfs_snapshot_promote(self, clone_name):
-        logger.debug('Promoting {}'.format(clone_name)
+        logger.debug('Promoting {}'.format(clone_name))
 
         if local('zfs promote {}'.format(clone_name)).return_code != 0:
             raise SnapshotException('Failed to promote snapshot')
@@ -27,45 +28,6 @@ class Snapshot:
 
         return local('zfs snap {}'.format(self.name))
 
-
-    def __init__(self, keystore, config = None, name = None):
-        self.keystore   = keystore
-
-        #configure fabric
-        env.host_string   = 'localhost'
-        env.warn_only     = True
-
-        for c in ['running', 'stderr', 'status', 'warning']:
-            output[c] = False
-
-        # check if we have all the required params
-        if not (config or name):
-            logger.critical('Snapshot required either config or name to load')
-            exit(1)
-
-        if config:
-            self._loaded    = False
-            self.filesystem = config['filesystem']
-            self.config     = config
-            self.name       = None
-        else:
-            data = keystore.list_snapshots(name=name)
-
-            if len(data) == 0:
-                raise KeyError('Snapshot with name {} not found'.format(name))
-
-            self._loaded    = True
-            self.time       = data[0]['time']
-            self.filesystem = data[0]['filesystem']
-            self.config     = data[0]
-            self.name       = name
-
-    def __repr__(self):
-        return str({
-                'time': self.time,
-                'filesystem': self.filesystem,
-                'name': self.name
-        })
 
     def create(self):
         logger.debug('creating snapshot')
@@ -99,10 +61,10 @@ class Snapshot:
         )
 
 
-    def restore(self, name):
+    def restore(self):
         logger.debug('restoring snapshot')
 
-        clone_name = "{0}_clone-{1}".format(self.name, int(time.time()))
+        clone_name = "{0}_clone-{1}".format(self.filesystem, int(time.time()))
 
         # TODO check if there are any other open filehandles to the mountpoint, otherwise this sequence will FAIL
 
@@ -114,11 +76,10 @@ class Snapshot:
             self.zfs_snapshot_destroy(self)
 
             self.zfs_snapshot_rename(self, clone_name)
-        except SnapshotError, e:
+        except SnapshotException, e:
             # fix this with rollback and checks
-            logger.fatal('Oops.. you probably still have some filehandles open to {}'.format(self.filesystem))
-            exit(1)
+            logger.fatal(e)
 
 
-class SnapshotError(Exception):
+class SnapshotException(Exception):
     pass

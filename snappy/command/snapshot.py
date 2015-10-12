@@ -2,6 +2,11 @@
 Usage:
     snappy snapshot
     snappy snapshot list [options]
+    snappy snapshot restore <name>
+
+Commands:
+    list        List snapshots in the keystore
+    restore     Restore a snapshot
 
 Options:
     -h, --help                    Display this help
@@ -13,6 +18,7 @@ from snappy import keystore, snapshot
 from snappy.utils import config, logger
 from prettytable import PrettyTable
 
+import sys
 
 def action_list(args, config):
     with keystore.get(*config['keystore']) as ks:
@@ -30,9 +36,17 @@ def action_list(args, config):
         print table.get_string(sortby=args['--sort'], reversesort=args['--reverse'])
 
 
+def action_restore(args, config):
+    print 'restore!'
+    pass
+
 def main(args):
     logger.debug("Using arguments: {0}".format(args))
     logger.debug("Using configuration: {0}".format(config))
 
-    if args['list']:
-        action_list(args, config)
+    module = sys.modules[__name__]
+
+    for c in ['list', 'restore']:
+        if args[c] and hasattr(module, 'action_{}'.format(c)):
+            command = getattr(module, 'action_{}'.format(c))
+            command(args,config)

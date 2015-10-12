@@ -5,7 +5,7 @@ Usage:
     snappy restore <name>
 """
 
-from snappy import keystore, lockagent, snapshot
+from snappy import backend, keystore, lockagent, snapshot
 from snappy.utils import config, logger
 
 
@@ -20,10 +20,15 @@ def main(args):
 
         try:
             snap = snapshot.Snapshot(ks, name=args['<name>'])
+            #be = backend.get(*config['backend'])
+            
+            #be.start_restore()
+
+            # restore the snapshot, fingers crossed
+            snap.restore()
         except KeyError:
             logger.info('Snapshot not found in datastore')
-            exit(1)
-
-        logger.debug(snap)
-
-    pass
+        finally:
+            #if be:
+            #    be.end_restore()
+            pass

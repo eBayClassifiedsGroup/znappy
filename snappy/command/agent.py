@@ -40,7 +40,7 @@ def main(args):
                 be = backend.get(*config['backend'])
                 be.start_snapshot()
 
-                snap = snapshot.Snapshot(ks, config['snapshot'])
+                snap = snapshot.get('ZFSSnapshot', ks, config['snapshot'])
                 snap.create()
 
                 logger.debug(snap)
