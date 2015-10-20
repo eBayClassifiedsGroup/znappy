@@ -1,7 +1,11 @@
 import time
-from snappy.utils import logger
+from snappy.utils import keystore, register_handler
 from snappy.snapshot.base import BaseSnapshot
 from fabric.api import env, local, output, task, settings
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class ZFSSnapshot(BaseSnapshot):
@@ -80,6 +84,13 @@ class ZFSSnapshot(BaseSnapshot):
             # fix this with rollback and checks
             logger.fatal(e)
 
+
+def load_handlers(config):
+    logger.debug('called with config: {}'.format(config))
+    instance = ZFSSnapshot(keystore, config=config)
+    
+    register_handler("create_snapshot", instance.create)
+    register_handler("save_snapshot", instance.save)
 
 class SnapshotException(Exception):
     pass

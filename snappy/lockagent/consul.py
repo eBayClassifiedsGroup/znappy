@@ -7,18 +7,16 @@ class ConsulLockAgent(BaseLockAgent):
         self.consul = consul.Consul(**config)
 
 
-    def __enter__(self):
+    def connect(self):
         self.session_id = self.consul.session.create(name="snappy-agent-lockagent")
 
-        return self
 
-
-    def __exit__(self, type, value, tb):
+    def close(self):
         self.release()
         self.consul.session.destroy(self.session_id)
 
-    def acquire(self):
 
+    def acquire(self):
         return self.consul.kv.put(
             "service/snappy/.lock",
             "",

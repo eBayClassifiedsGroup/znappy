@@ -1,9 +1,7 @@
-from snappy.snapshot.zfs import ZFSSnapshot
-from snappy.snapshot.mysql import MySQLSnapshot
 import importlib
 
 
-__all__ = ["zfs", "mysql"]
+__all__ = ["zfs", "mysql", "get"]
 
 
 def get(classname, *args, **kwargs):

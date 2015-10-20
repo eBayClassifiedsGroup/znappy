@@ -17,6 +17,10 @@ def check_update(ks, config):
 
     logger.debug(snapshots)
 
+    if snapshots is None:
+        logger.debug('no snapshots in datastore')
+        return True
+
     last_snapshot = max(snapshots, key=lambda v:v['time'])
 
     if last_snapshot['time'] < int(time.time() - config['max_age']):
@@ -40,7 +44,8 @@ def main(args):
                 be = backend.get(*config['backend'])
                 be.start_snapshot()
 
-                snap = snapshot.get('ZFSSnapshot', ks, config['snapshot'])
+#                snap = snapshot.get('ZFSSnapshot', ks, config['snapshot'])
+                snap = snapshot.get('MySQLSnapshot', ks, config['snapshot'])
                 snap.create()
 
                 logger.debug(snap)

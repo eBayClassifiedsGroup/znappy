@@ -15,12 +15,9 @@ Commands:
 See 'snappy help <command>' for more information on a specific command
 """
 
-# temp for testing on dev
-import sys
-sys.path.insert(0, '/home/ubuntu/snappy')
-
-from snappy import utils
+from snappy import keystone, lockagent, utils
 from docopt import docopt
+import logging
 import importlib
 
 if __name__ == "__main__":
@@ -38,16 +35,42 @@ if __name__ == "__main__":
         argv = [args['<command>']] + args['<args>']
 
     utils.load_config(args['--config'])
-    utils.load_logger("snappy-{}".format(argv[0]), args['--debug'])
+
+    if args['--debug']:
+        level = logging.DEBUG
+    else:
+        level = utils.config.get('logging', {}).get('level', logging.INFO)
+
+    logging.basicConfig(
+        format="%(asctime)s [%(name)-24.24s] [%(funcName)-16.16s] [%(levelname)-8.8s] %(message)s",
+        level=level
+    )
+
+    # override the urllib connection shit, don't need that
+    logging.getLogger('urllib3.connectionpool').setLevel(logging.WARNING)
+
+    logger = logging.getLogger(__name__)
+
+    utils.keystore = keystore.get(*config['keystore'])
+    utils.lockagent = lockagent.get(*config['lockagent'])
 
     try:
+        # connect the keystore and the lockagent
+        utils.keystore.connect()
+        utils.lockagent.connect()
+
+        logger.debug('executing command {}'.format(argv[0]))
         command = importlib.import_module('{0}.{1}'.format('snappy.command', argv[0]))
     except ImportError:
-        print('Err: command {} not found'.format(argv[0]))
-        exit(1)
-    except TypeError:
-        print('Err: parse __doc__ string for {}'.format(argv[0]))
+        logger.fatal('command {} not found'.format(argv[0]))
+        exit(127)
+    except Exception, e:
+        logger.debug(e)
         exit(255)
+    finally:
+        # close the connections to the keystore and lockagent
+        utils.keystore.close()
+        utils.lockagent.close()
 
     command.main(docopt(command.__doc__, argv=argv))
 

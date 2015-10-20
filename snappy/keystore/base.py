@@ -3,6 +3,16 @@ from abc import ABCMeta, abstractmethod
 class BaseKeystore:
     __metaclass__ = ABCMeta
 
+    def __enter__(self):
+        self.connect()
+
+        return self
+
+
+    def __exit__(self, type, value, tb):
+        self.close()
+
+
     @abstractmethod
     def list_snapshots(self):
         """Retrieve snapshots from the keystore, this method should return a list of snapshots"""

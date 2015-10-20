@@ -11,24 +11,27 @@ class ConsulKeystore(BaseKeystore):
         self.consul   = consul.Consul(**config)
 
 
-    def __enter__(self):
+    def _to_json(self, s):
+        return json.load(StringIO(s['Value']))
+
+
+    def connect(self):
         self.session_id = self.consul.session.create(name="snappy-agent-keystore")
         self.node = self.consul.session.info(self.session_id)[1]['Node']
 
-        return self
 
-    def __exit__(self, type, value, tb):
+    def close(self):
         self.consul.session.destroy(self.session_id)
 
-
-    def _to_json(self, s):
-        return json.load(StringIO(s['Value']))
 
     def list_snapshots(self, **kwargs):
         index, snapshots = self.consul.kv.get(
             "service/snappy/snapshots/{0}".format(self.node),
             recurse=True
         )
+
+        if snapshots is None:
+            return None
 
         candidates = map(self._to_json, snapshots)
 

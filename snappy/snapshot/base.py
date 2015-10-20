@@ -1,44 +1,52 @@
-from snappy.utils import logger
 from abc import ABCMeta, abstractmethod
+from fabric.api import env, output
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 class BaseSnapshot:
     __metaclass__ = ABCMeta
 
     
     def __init__(self, keystore, config = None, name = None):
-        self.keystore   = keystore
-
-        # configure fabric
-        env.host_string = 'localhost'
-        env.warn_only   = True
-
-        for c in ['running', 'stderr', 'status', 'warning']:
-            output[c] = False
-
-        if config:
-            self._loaded    = False
-            self.filesystem = config['filesystem']
-            self.config     = config
-            self.name       = None
-        else:
-            data = keystore.list_snapshots(name=name)
-
-            if len(data) == 0:
-                raise KeyError('Snapshot with name {} not found'.format(name))
-
-            self._loaded    = True
-            self.time       = data[0]['time']
-            self.filesystem = data[0]['filesystem']
-            self.config     = data[0]
-            self.name       = name
+        logger.debug(config)
+#        logger.debug(config)
+#
+#        self.keystore   = keystore
+#
+#        # configure fabric
+#        env.host_string = 'localhost'
+#        env.warn_only   = True
+#
+#        for c in ['running', 'stderr', 'status', 'warning']:
+#            output[c] = False
+#
+#        if config:
+#            self._loaded    = False
+#            self.filesystem = config['filesystem']
+#            self.config     = config
+#            self.name       = None
+#        else:
+#            data = keystore.list_snapshots(name=name)
+#
+#            if len(data) == 0:
+#                raise KeyError('Snapshot with name {} not found'.format(name))
+#
+#            self._loaded    = True
+#            self.time       = data[0]['time']
+#            self.filesystem = data[0]['filesystem']
+#            self.config     = data[0]
+#            self.name       = name
 
 
     def __repr__(self):
-        return str({
-            'time': self.time,
-            'filesystem': self.filesystem,
-            'name': self.name
-        })
+        return "base_snapshot"
+#        return str({
+#            'time': self.time,
+#            'filesystem': self.filesystem,
+#            'name': self.name
+#        })
 
 
     def save(self):
