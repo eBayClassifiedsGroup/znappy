@@ -11,33 +11,32 @@ class BaseSnapshot:
     
     def __init__(self, keystore, config = None, name = None):
         logger.debug(config)
-#        logger.debug(config)
-#
-#        self.keystore   = keystore
-#
-#        # configure fabric
-#        env.host_string = 'localhost'
-#        env.warn_only   = True
-#
-#        for c in ['running', 'stderr', 'status', 'warning']:
-#            output[c] = False
-#
-#        if config:
-#            self._loaded    = False
-#            self.filesystem = config['filesystem']
-#            self.config     = config
-#            self.name       = None
-#        else:
-#            data = keystore.list_snapshots(name=name)
-#
-#            if len(data) == 0:
-#                raise KeyError('Snapshot with name {} not found'.format(name))
-#
-#            self._loaded    = True
-#            self.time       = data[0]['time']
-#            self.filesystem = data[0]['filesystem']
-#            self.config     = data[0]
-#            self.name       = name
+  
+        self.keystore   = keystore
+
+        # configure fabric
+        env.host_string = 'localhost'
+        env.warn_only   = True
+
+        for c in ['running', 'stderr', 'status', 'warning']:
+            output[c] = False
+
+        if config:
+            self._loaded    = False
+            self.filesystem = config['filesystem']
+            self.config     = config
+            self.name       = None
+        else:
+            data = keystore.list_snapshots(name=name)
+
+            if len(data) == 0:
+                raise KeyError('Snapshot with name {} not found'.format(name))
+
+            self._loaded    = True
+            self.time       = data[0]['time']
+            self.filesystem = data[0]['filesystem']
+            self.config     = data[0]
+            self.name       = name
 
 
     def __repr__(self):

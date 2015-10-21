@@ -49,7 +49,7 @@ def register_handler(event, handler, priority=0):
     insort(event_handlers, handler)
 
 
-def execute_event(*events):
+def execute_event(events, *args, **kwargs):
     global handlers, logger
 
     matching_handlers = []
@@ -63,7 +63,7 @@ def execute_event(*events):
 
     for handle in matching_handlers:
         # probabably want to do this with exceptions
-        status, message = handle.callback()
+        status, message = handle.callback(*args, **kwargs)
         
         if not status:
             logger.critical('callback failed, stopping')

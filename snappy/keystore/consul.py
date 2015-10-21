@@ -5,6 +5,9 @@ from StringIO import StringIO
 from snappy.keystore.base import BaseKeystore
 import consul
 
+import logging
+
+logger = logging.getLogger(__name__)
 
 class ConsulKeystore(BaseKeystore):
     def __init__(self, config):
@@ -41,17 +44,10 @@ class ConsulKeystore(BaseKeystore):
         return candidates
 
 
-    def add_snapshot(self, **kwargs):
-        snapshot = {
-            "filesystem": None,
-            "name": "default-snapshot-name",
-            "time": int(time.time()),
-        }
-        
-        snapshot.update(kwargs)
-
+    def add_snapshot(self, name, snapshot):
+        logger.debug('add snapshot {0} with data: {1}'.format(name,snapshot))
         return self.consul.kv.put(
-            "service/snappy/snapshots/{0}/{1}".format(self.node, snapshot['name']),
+            "service/snappy/snapshots/{0}/{1}".format(self.node, name),
             json.dumps(snapshot)
         )
 

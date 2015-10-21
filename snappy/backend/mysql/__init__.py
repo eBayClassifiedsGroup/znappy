@@ -56,7 +56,7 @@ def query(query):
     return result
 
 
-def load_handlers(_config):
+def load_handlers(_config, keystore):
     global config
 
     config = _config

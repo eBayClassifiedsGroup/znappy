@@ -1,13 +1,18 @@
 from __future__ import absolute_import
 from snappy.lockagent.base import BaseLockAgent
 import consul
+import logging
+
+logger = logging.getLogger(__name__)
 
 class ConsulLockAgent(BaseLockAgent):
     def __init__(self, config):
+        logger.debug("init lockagent")
         self.consul = consul.Consul(**config)
 
 
     def connect(self):
+        logger.debug('connect lockagent')
         self.session_id = self.consul.session.create(name="snappy-agent-lockagent")
 
 

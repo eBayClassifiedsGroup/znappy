@@ -6,11 +6,14 @@ Options:
     -f, --force  Force create a snapshot, this bypasses the pre_/post_ phase and the locking agent
 """
 
-from snappy import backend, keystore, lockagent, snapshot
-from snappy.utils import config, logger
+from snappy import snapshot
+from snappy.utils import config, execute_event
 
+import importlib
 import time
+import logging
 
+logger = logging.getLogger(__name__)
 
 def check_update(ks, config):
     snapshots = ks.list_snapshots()
@@ -31,33 +34,47 @@ def check_update(ks, config):
         return False
 
 
-def main(args):
+def main(keystore, lockagent, args):
     logger.debug("Using arguments: {0}".format(args))
     logger.debug("Using configuration: {0}".format(config))
 
-    # get keystore and lockagent
-    with keystore.get(*config['keystore']) as ks, lockagent.get(*config['lockagent']) as la:
-        # preflight check
-        if check_update(ks, config['snapshot']) and la.acquire():
-            try:
-                # notify the backend that we are about to start a snapshot
-                be = backend.get(*config['backend'])
-                be.start_snapshot()
+    for pkgname in config['drivers'].keys():
+        try:
+            pkg = importlib.import_module(pkgname)
+            # TODO add keystore as an argument, making it more transparent to the module
+            pkg.load_handlers(
+                config['drivers'].get(pkgname, {}),
+                keystore
+            )
+        except ImportError, e:
+            logger.info("Failed to load package: {}.. skipping".format(e.message))
+        except Exception, e:
+            logger.fatal("Failed to load package: {}.. exiting".format(e.message))
+            raise e
+            exit(1)
 
-#                snap = snapshot.get('ZFSSnapshot', ks, config['snapshot'])
-                snap = snapshot.get('MySQLSnapshot', ks, config['snapshot'])
-                snap.create()
+    # preflight check
+    logger.debug(lockagent.session_id)
+    if check_update(keystore, config['snapshot']) and lockagent.acquire():
+        try:
+            # notify drivers that we are ready to start snapshotting
+            execute_event(['pre_snapshot', 'all_agent'])
+            execute_event(['start_snapshot'])
 
-                logger.debug(snap)
+            # notify drivers that they can make the snapshot
+            execute_event(['create_snapshot'])
+            # actually it might be better to not have this step and
+            # have it in create_snapshot -> do_snapshot? to have atomicity
+            execute_event(['save_snapshot'])
+        # just catch any exception, we want to make sure the finally does it's job
+        except Exception as e:
+            logger.debug(e)
 
-                snap.save()
-            except Exception as e:
-                logger.debug(e)
-
-                # roll back stuff
-            finally:
-                # notify the backend we are done making the snapshot
-                if be:
-                    be.end_snapshot()
-        else:
-            logger.debug('Preflight failure.. skipping run')
+        # roll back stuff
+        finally:
+            # we just made the snapshot
+            # the drivers should take care that any of these steps may not have been executed
+            execute_event(['end_snapshot'])
+            execute_event(['post_snapshot'])
+    else:
+        logger.debug('Preflight failure.. skipping run')

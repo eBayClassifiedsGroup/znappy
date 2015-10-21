@@ -1,14 +1,14 @@
 import time
-from snappy.utils import keystore, register_handler
-from snappy.snapshot.base import BaseSnapshot
-from fabric.api import env, local, output, task, settings
+from snappy.utils import register_handler
+from snappy.snapshot import Snapshot
+from fabric.api import env, local, output, task
 
 import logging
 
 logger = logging.getLogger(__name__)
 
 
-class ZFSSnapshot(BaseSnapshot):
+class ZFSSnapshot(object):
     @task
     def zfs_snapshot_clone(self, clone_name):
         logger.debug('Cloning {0} into {1}'.format(self.name, clone_name))
@@ -33,37 +33,45 @@ class ZFSSnapshot(BaseSnapshot):
         return local('zfs snap {}'.format(self.name))
 
 
+    def _config_fabric(self):
+        env.host_string = 'localhost'
+        env.warn_only   = True
+
+        for c in ['running', 'stderr', 'status', 'warning']:
+            output[c] = False
+
+
+    def __init__(self, snapshot, config):
+        logger.debug("init zfssnapshot with config: {}".format(config))
+
+        self.snapshot   = snapshot
+        self.filesystem = config['filesystem']
+
+        self._config_fabric()
+
+
     def create(self):
         logger.debug('creating snapshot')
         result = self.zfs_snapshot_create(self)
 
-        if not result.return_code == 0:
+        if result.return_code == 0:
+            logger.info('Snapshot created succesfully')
+        else:
             logger.fatal('Snapshot failed :(')
-            # raise Exception? we don't have any :(
-            exit(0)
 
-        logger.info('Snapshot created succesfully')
-        self._loaded = True
+        return result.return_code == 0, ''
 
-        return result
 
     def list(self):
         logger.debug('listing snapshot for filesystem {}'.format(self.filesystem))
 
 
     def save(self):
-        if not self._loaded:
-            logger.error('Cannot save snapshot, no snapshot loaded!')
-            return False
-
-        logger.debug('saving snapshot')
-
-        return self.keystore.add_snapshot(
-            filesystem=self.filesystem,
-            name=self.name,
-            time=self.time
-        )
-
+        return self.snapshot.save(**{
+            'name':   self.name,
+            'time':   self.time,
+            'target': self.filesystem
+        }), 'zfssnapshot_save'
 
     def restore(self):
         logger.debug('restoring snapshot')
@@ -71,7 +79,6 @@ class ZFSSnapshot(BaseSnapshot):
         clone_name = "{0}_clone-{1}".format(self.filesystem, int(time.time()))
 
         # TODO check if there are any other open filehandles to the mountpoint, otherwise this sequence will FAIL
-
         try:
             self.zfs_snapshot_clone(self, clone_name)
 
@@ -81,16 +88,21 @@ class ZFSSnapshot(BaseSnapshot):
 
             self.zfs_snapshot_rename(self, clone_name)
         except SnapshotException, e:
-            # fix this with rollback and checks
+            # TODO fix this with rollback and checks
             logger.fatal(e)
 
 
-def load_handlers(config):
+class SnapshotException(Exception):
+    pass
+
+
+def load_handlers(config, keystore):
     logger.debug('called with config: {}'.format(config))
-    instance = ZFSSnapshot(keystore, config=config)
+
+    # TODO do not pass the keystore to the ZFS module, rather
+    #      create a snapshot instance and pass that, making the module
+    #      transparent to changes in the snapshot details
+    instance = ZFSSnapshot(Snapshot(keystore), config=config)
     
     register_handler("create_snapshot", instance.create)
     register_handler("save_snapshot", instance.save)
-
-class SnapshotException(Exception):
-    pass
