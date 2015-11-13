@@ -38,6 +38,27 @@ def unlock_mysql():
     return True, ""
 
 
+def stop_replication():
+    logger.debug('Stopping replication')
+    query('STOP SLAVE SQL_THREAD;')
+
+    return True, ""
+
+
+def start_replication():
+    logger.debug('Starting replication')
+    query('START SLAVE SQL_THREAD;')
+
+    return True, ""
+
+
+def flush_tables():
+    logger.debug('Flushing tables')
+    query('FLUSH TABLES;')
+
+    return True, ""
+
+
 def _connect():
     return MySQLdb.connect(
         host=config.get('host', 'localhost'),
@@ -64,8 +85,11 @@ def load_handlers(_config, keystore):
     logger.debug('called with config: {}'.format(config))
 
     # agent
-    register_handler("start_snapshot", lock_mysql)
-    register_handler("end_snapshot", unlock_mysql)
+    #register_handler("start_snapshot", lock_mysql)
+    #register_handler("end_snapshot", unlock_mysql)
+    register_handler("start_snapshot", stop_replication, priority=0)
+    register_handler("start_snapshot", flush_tables, priority=1)
+    register_handler("end_snapshot", start_replication)
 
     # restore
     register_handler("start_restore", stop_mysql)

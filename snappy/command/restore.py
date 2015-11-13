@@ -2,33 +2,46 @@
 Restore a snapshot back to disk (mount)
 
 Usage:
-    snappy restore <name>
+    snappy restore [options] <name>
+
+Options:
+    -c=<name>, --cluster=<name>  Name of the clusteri [default: default]
+    -f, --force                  Force restore of the snapshot, this will skip the lockagent
 """
 
-from snappy import backend, keystore, lockagent, snapshot
-from snappy.utils import config, logger
+from snappy import utils, models
+import logging
 
+logger = logging.getLogger(__name__)
 
-def main(args):
+def main(db, args):
+    config = utils.config
+
     logger.debug("Using arguments: {}".format(args))
     logger.debug("Using config: {}".format(config))
 
-    with keystore.get(*config['keystore']) as ks, lockagent.get(*config['lockagent']) as la:
-        if not la.acquire():
-            logger.fatal('Could not acquire lock!')
-            exit(3)
+    cluster  = models.Cluster(args['--cluster'])
+    host     = cluster.hosts[db.node]
+    snapshot = filter(lambda s: s.name == args['<name>'], host.snapshots)
 
+    logger.debug(snapshot)
+
+    if len(snapshot) != 1:
+        logger.info('Snapshot not found!')
+    elif args['--force'] or cluster.lock():
         try:
-            snap = snapshot.Snapshot(ks, name=args['<name>'])
-            #be = backend.get(*config['backend'])
-            
-            #be.start_restore()
+            logger.debug("Found snapshot: {}".format(snapshot))
 
-            # restore the snapshot, fingers crossed
-            snap.restore()
-        except KeyError:
-            logger.info('Snapshot not found in datastore')
+            utils.load_drivers(config, snapshot)
+
+            utils.execute_event(['pre_restore'], snapshot.driver)
+            utils.execute_event(['start_restore'], snapshot.driver)
+
+            utils.execute_event(['do_restore'], snapshot.driver)
         finally:
-            #if be:
-            #    be.end_restore()
-            pass
+            utils.execute_event(['end_restore'])
+            utils.execute_event(['post_restore'])
+
+        # TODO add some cleanup function maybe
+    else:
+        logger.debug("Failed to start recovery!")

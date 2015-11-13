@@ -9,44 +9,47 @@ Commands:
     restore     Restore a snapshot
 
 Options:
-    -h, --help                    Display this help
-    -s=<column>, --sort=<column>  Output column to sort in [default: name]
-    -r, --reverse                 Reverse the sorting of the output
+    -h, --help                         Display this help
+    -c=<cluster>, --cluster=<cluster>  Cluster name [default: default]
+    -s=<column>, --sort=<column>       Output column to sort in [default: name]
+    -r, --reverse                      Reverse the sorting of the output
 """
 
-from snappy import keystore, snapshot
-from snappy.utils import config, logger
+from snappy import utils, models
 from prettytable import PrettyTable
 
 import sys
+import logging
 
-def action_list(args, config):
-    with keystore.get(*config['keystore']) as ks:
-        snapshots = ks.list_snapshots()
+logger = logging.getLogger(__name__)
 
-        if len(snapshots) == 0:
-            print "No snapshots found on this machine"
-            exit(0)
+def action_list(snapshots, args):
+    if len(snapshots) == 0:
+        print "No snapshots found on this machine"
+        exit(0)
 
-        table = PrettyTable(field_names=["name","filesystem","time"])
+    logger.debug(snapshots)
 
-        for s in snapshots:
-            table.add_row([s['name'], s['filesystem'], s['time']])
+    table = PrettyTable(field_names=["name","driver","target","time"])
 
-        print table.get_string(sortby=args['--sort'], reversesort=args['--reverse'])
+    for s in snapshots:
+        table.add_row([s.name, s.driver, s.target, s.time])
+
+    print table.get_string(sortby=args['--sort'], reversesort=args['--reverse'])
 
 
-def action_restore(args, config):
-    print 'restore!'
-    pass
+def main(db, args):
+    config = utils.config
 
-def main(args):
     logger.debug("Using arguments: {0}".format(args))
     logger.debug("Using configuration: {0}".format(config))
 
     module = sys.modules[__name__]
 
-    for c in ['list', 'restore']:
+    cluster = models.Cluster(args['--cluster'])
+    host    = cluster.hosts[db.node]
+
+    for c in ['list']:
         if args[c] and hasattr(module, 'action_{}'.format(c)):
             command = getattr(module, 'action_{}'.format(c))
-            command(args,config)
+            command(host.snapshots, args)

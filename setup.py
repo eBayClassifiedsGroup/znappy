@@ -7,7 +7,7 @@ def read(fname):
 
 setup(
     name="snappy",
-    version="0.0.1",
+    version="0.1.0",
     author="Jorn Wijnands",
     author_email="jwijnands@ebay.com",
     description=("Tool for creating and managing (distributed) ZFS snapshots"),
@@ -26,7 +26,8 @@ setup(
     install_requires=[
         "python-docopt",
         "python-consul",
-        "PyYAML",
+        "python-mysqldb",
+        "python-pyyaml",
     ],
     scripts=[
         'bin/snappy',
