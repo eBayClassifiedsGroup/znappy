@@ -10,6 +10,8 @@ setup(
     version="0.1.0",
     author="Jorn Wijnands",
     author_email="jwijnands@ebay.com",
+    maintainer="Jorn Wijnands",
+    maintainer_email="jwijnands@ebay.com",
     description=("Tool for creating and managing (distributed) ZFS snapshots"),
     long_description=read('README.md'),
     license="GPL",
