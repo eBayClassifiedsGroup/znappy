@@ -1,9 +1,9 @@
 """
 Usage:
-        snappy register <cluster>
+        znappy register <cluster>
 """
 
-from snappy import utils
+from znappy import utils
 import logging
 
 logger = logging.getLogger(__name__)
@@ -16,7 +16,7 @@ def main(db, args):
 
     # create the config key
     db.put(
-        'service/snappy/{0}/{1}/snapshots/'.format(
+        'service/znappy/{0}/{1}/snapshots/'.format(
             args['<cluster>'],
             db.node
         ),

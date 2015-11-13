@@ -58,7 +58,7 @@ class Cluster(Model):
 
 
     def path(self):
-        return "{0}/{1}".format('service/snappy', self.name)
+        return "{0}/{1}".format('service/znappy', self.name)
 
 
 class Host(object):

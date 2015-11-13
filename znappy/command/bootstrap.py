@@ -1,13 +1,13 @@
 """
 
 Usage:
-        snappy bootstrap [options]
+        znappy bootstrap [options]
 
 Options:
     -c=<FILE>, --config=<FILE>  Configuration file to use
 """
 
-from snappy import utils
+from znappy import utils
 import logging
 import json
 
@@ -26,12 +26,12 @@ def main(db, args):
     
     # create the config key
     db.put(
-        'service/snappy/config',
+        'service/znappy/config',
         json.dumps(bdata)
     )
 
     # create directory for hosts
     db.put(
-        'service/snappy/{}/'.format(cluster),
+        'service/znappy/{}/'.format(cluster),
         None
     )

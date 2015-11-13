@@ -1,5 +1,5 @@
 import time
-from snappy.utils import register_handler
+from znappy.utils import register_handler
 from fabric.api import env, local, output, task
 
 import logging

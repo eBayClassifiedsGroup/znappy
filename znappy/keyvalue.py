@@ -19,7 +19,7 @@ class KeyValue(object):
 
 
     def connect(self):
-        self._session_id = self._consul.session.create(name="snappy-agent")
+        self._session_id = self._consul.session.create(name="znappy-agent")
 
         logger.debug("Connected to Consul: {}".format(self._session_id))
 

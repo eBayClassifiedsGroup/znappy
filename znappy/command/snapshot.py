@@ -1,8 +1,8 @@
 """
 Usage:
-    snappy snapshot
-    snappy snapshot list [options]
-    snappy snapshot restore <name>
+    znappy snapshot
+    znappy snapshot list [options]
+    znappy snapshot restore <name>
 
 Commands:
     list        List snapshots in the keystore
@@ -15,7 +15,7 @@ Options:
     -r, --reverse                      Reverse the sorting of the output
 """
 
-from snappy import utils, models
+from znappy import utils, models
 from prettytable import PrettyTable
 
 import sys

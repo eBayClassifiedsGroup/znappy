@@ -1,13 +1,13 @@
 """
 Usage:
-    snappy agent [options]
+    znappy agent [options]
 
 Options:
     -f, --force    Force create a snapshot, this bypasses the pre_/post_ phase and the locking agent
     -c=<NAME>, --cluster=<NAME>  Cluster name [default: default]
 """
 
-from snappy import models, utils
+from znappy import models, utils
 import time
 import logging, logging.handlers
 

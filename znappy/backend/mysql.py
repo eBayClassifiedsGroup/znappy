@@ -4,7 +4,7 @@
 __all__ = ['load_handlers']
 
 
-from snappy.utils import config, register_handler
+from znappy.utils import config, register_handler
 from fabric.api import task, local, env
 import logging
 import MySQLdb

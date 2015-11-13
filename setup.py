@@ -6,7 +6,7 @@ def read(fname):
 
 
 setup(
-    name="snappy",
+    name="znappy",
     version="0.1.0",
     author="Jorn Wijnands",
     author_email="jwijnands@ebay.com",
@@ -14,8 +14,8 @@ setup(
     long_description=read('README.md'),
     license="GPL",
     keywords="python zfs snapshot backup",
-    url="https://github.corp.ebay.com/ecg-marktplaats/snappy",
-    packages=['snappy'] + [os.path.join("snappy", p) for p in find_packages("snappy")],
+    url="https://github.corp.ebay.com/ecg-marktplaats/so-znappy",
+    packages=['znappy'] + [os.path.join("znappy", p) for p in find_packages("znappy")],
     include_package_data=True,
     zip_safe=False,
     classifiers=[
@@ -30,7 +30,7 @@ setup(
         "python-pyyaml",
     ],
     scripts=[
-        'bin/snappy',
+        'bin/znappy',
     ],
 )
 

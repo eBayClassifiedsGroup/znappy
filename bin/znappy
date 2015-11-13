@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """
 Usage:
-    snappy [--host=<host>] [--port=<port>] [--help] [--debug] <command> [<args>...]
+    znappy [--host=<host>] [--port=<port>] [--help] [--debug] <command> [<args>...]
 
 Options:
     -?, --help                  This help message
@@ -15,11 +15,11 @@ Commands:
     bootstrap   Bootstrap a cluster
     register    register a machine to the cluster
 
-See 'snappy help <command>' for more information on a specific command
+See 'znappy help <command>' for more information on a specific command
 """
 
-from snappy import keyvalue, models
-from snappy.utils import config, load_config
+from znappy import keyvalue, models
+from znappy.utils import config, load_config
 from docopt import docopt
 import logging, logging.handlers
 import importlib
@@ -37,7 +37,7 @@ if __name__ == "__main__":
         # we need this because help requires an argument but is not a real package
         if args['<args>'] is not []:
             # print __doc__ would work too..
-            print(docopt(__doc__, argv=['snappy', '--help']))
+            print(docopt(__doc__, argv=['znappy', '--help']))
             exit(0)
 
         argv = args['<args>'] + ['--help']
@@ -57,7 +57,7 @@ if __name__ == "__main__":
 
     try:
         logger.debug('executing command {}'.format(argv[0]))
-        command = importlib.import_module('snappy.command.{}'.format(argv[0]))
+        command = importlib.import_module('znappy.command.{}'.format(argv[0]))
     except ImportError, e:
         # this is not a 100% accurate, it could be that a command imports other deps which fail, still good
         # enough for now

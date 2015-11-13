@@ -2,14 +2,14 @@
 Restore a snapshot back to disk (mount)
 
 Usage:
-    snappy restore [options] <name>
+    znappy restore [options] <name>
 
 Options:
     -c=<name>, --cluster=<name>  Name of the clusteri [default: default]
     -f, --force                  Force restore of the snapshot, this will skip the lockagent
 """
 
-from snappy import utils, models
+from znappy import utils, models
 import logging
 
 logger = logging.getLogger(__name__)

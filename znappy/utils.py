@@ -35,7 +35,7 @@ events = [
 def load_config(db):
     global config
 
-    index, data = db.get('service/snappy/config')
+    index, data = db.get('service/znappy/config')
 
     logger.debug(data)
 
