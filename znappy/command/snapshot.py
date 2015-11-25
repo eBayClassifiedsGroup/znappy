@@ -2,7 +2,7 @@
 Usage:
     znappy snapshot
     znappy snapshot list [options]
-    znappy snapshot restore <name>
+    znappy snapshot restore <name> [--cluster=<cluster>]
 
 Commands:
     list        List snapshots in the keystore
@@ -38,6 +38,31 @@ def action_list(snapshots, args):
     print table.get_string(sortby=args['--sort'], reversesort=args['--reverse'])
 
 
+def action_restore(snapshots, args):
+    logger.debug(snapshots)
+    logger.debug(args)
+
+    candidates = filter(lambda s: s.name == args['<name>'], snapshots)
+
+    if len(candidates) != 1:
+        logger.fatal('Snapshot name `{}` not found or ambiguous')
+        exit(1)
+
+    snapshot = candidates[0]
+
+    utils.load_drivers(utils.config, snapshot)
+
+    try:
+        utils.execute_event(['pre_restore'])
+        utils.execute_event(['start_restore'])
+        utils.execute_event(['do_restore'])
+    except Exception, e:
+        logger.fatal('Could not restore!')
+    finally:
+        utils.execute_event(['end_restore'])
+        utils.execute_event(['post_restore'])
+
+
 def main(db, args):
     config = utils.config
 
@@ -49,7 +74,7 @@ def main(db, args):
     cluster = models.Cluster(args['--cluster'])
     host    = cluster.hosts[db.node]
 
-    for c in ['list']:
+    for c in ['list', 'restore']:
         if args[c] and hasattr(module, 'action_{}'.format(c)):
             command = getattr(module, 'action_{}'.format(c))
             command(host.snapshots, args)

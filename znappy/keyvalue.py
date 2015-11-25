@@ -19,13 +19,15 @@ class KeyValue(object):
 
 
     def connect(self):
-        self._session_id = self._consul.session.create(name="znappy-agent")
+        self._session_id = self._consul.session.create(name="znappy-agent", ttl=15, lock_delay=0)
 
         logger.debug("Connected to Consul: {}".format(self._session_id))
 
         # not atomic, could in theory fail
         try:
-            self.node = self._consul.session.info(self._session_id)[1]['Node']
+            info = self._consul.session.info(self._session_id)
+            logger.debug(info)
+            self.node = info[1]['Node']
         except Exception, e:
             return False
 
@@ -34,6 +36,10 @@ class KeyValue(object):
 
     def close(self):
         self._consul.session.destroy(self._session_id)
+
+
+    def ping(self):
+        return self._consul.session.renew(self._session_id)
 
 
     def get(self, *args, **kwargs):
@@ -51,7 +57,9 @@ class KeyValue(object):
     def acquire(self, lock, *args, **kwargs):
         logger.debug("trying to acquire lock {0} for {1}".format(lock, self._session_id))
         # TODO implement semaphore
-        return self._consul.kv.put(lock, "", acquire=self._session_id)
+        result = self._consul.kv.put(lock, "", acquire=self._session_id)
+        logger.debug(result)
+        return result
 
 
     def release(self, lock, *args, **kwargs):

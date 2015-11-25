@@ -28,7 +28,7 @@ logging.basicConfig(format="%(asctime)s [%(name)-24.24s] [%(funcName)-16.16s] [%
 logging.getLogger('urllib3.connectionpool').setLevel(logging.WARNING)
 
 logger = logging.getLogger(__name__)
-logger.addHandler(logging.handlers.SysLogHandler(address='/dev/log'))
+#logger.addHandler(logging.handlers.SysLogHandler(address='/dev/log'))
 
 if __name__ == "__main__":
     args = docopt(__doc__, options_first=True)

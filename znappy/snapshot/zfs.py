@@ -13,7 +13,7 @@ class ZFSSnapshot(object):
     def zfs_snapshot_clone(self, clone_name):
         logger.debug('Cloning {filesystem}@{time} into {}'.format(clone_name, **dict(self)))
 
-        if local('zfs clone {filesystem}@{time} {}'.format(clone_name, **dict(self))).return_code != 0:
+        if local('/sbin/zfs clone {filesystem}@{time} {}'.format(clone_name, **dict(self))).return_code != 0:
             raise SnapshotException('Failed to clone snapshot')
 
 
@@ -21,7 +21,7 @@ class ZFSSnapshot(object):
     def zfs_snapshot_promote(self, clone_name):
         logger.debug('Promoting {}'.format(clone_name))
 
-        if local('zfs promote {}'.format(clone_name)).return_code != 0:
+        if local('/sbin/zfs promote {}'.format(clone_name)).return_code != 0:
             raise SnapshotException('Failed to promote snapshot')
 
 
@@ -30,12 +30,12 @@ class ZFSSnapshot(object):
         self.time = int(time.time())
         self.name = "{driver}-{filesystem}-{time}".format(**self.__dict__).replace('/','.')
 
-        return local('zfs snap {filesystem}@{name}'.format(**self.__dict__))
+        return local('/sbin/zfs snap {filesystem}@{name}'.format(**self.__dict__))
 
 
     @task
-    def zfs_snapshot_destroy(self, name):
-        if local('zfs destroy {filesystem}@{time}'.format(**dict(self))).return_code != 0:
+    def zfs_snapshot_destroy(self, target):
+        if local('/sbin/zfs destroy {}'.format(target)).return_code != 0:
             raise SnapshotException('Failed to destroy snapshot')
 
 
@@ -86,14 +86,15 @@ class ZFSSnapshot(object):
         for s in snapshots:
             try:
                 logger.debug("Deleting snapshot: {}".format(s.name))
-                self.zfs_snapshot_destroy(self, "{target}@{time}".format(**dict(s)))
+                self.zfs_snapshot_destroy(self, "{0}@{1}".format(s.target, s.name))
             except SnapshotException, e:
                 # It may be that the snapshot is still in the keystore, but not
                 # on the filesystem/zfs, ignore these errors for now
                 pass
-                s.delete()
 
-        return True, ''
+            s.delete()
+
+        return True, 'cleanup complete'
 
 
     def save(self, *args, **kwargs):
@@ -135,16 +136,16 @@ class SnapshotException(Exception):
     pass
 
 
-def load_handlers(config, snapshot):
+def load_handlers(config, snapshot, register=register_handler):
     logger.debug('called with config: {}'.format(config))
 
     instance = ZFSSnapshot(snapshot, config=config)
     
     # handlers for creating a snapshot
-    register_handler("create_snapshot", instance.create)
-    register_handler("save_snapshot", instance.save)
-    register_handler("delete_snapshot", instance.cleanup)
+    register("create_snapshot", instance.create)
+    register("save_snapshot", instance.save)
+    register("delete_snapshot", instance.cleanup)
 
     # handlers for restoring a snapshot
-    register_handler("start_restore", instance.start_restore, priority=sys.maxint)   # some high number, want to do this as last
-    register_handler("do_restore", instance.restore)
+    register("start_restore", instance.start_restore, priority=sys.maxint)   # some high number, want to do this as last
+    register("do_restore", instance.restore)

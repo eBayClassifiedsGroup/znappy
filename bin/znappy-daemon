@@ -1,16 +1,21 @@
+#!/usr/bin/env python
 import signal
 import time
 import logging
 import importlib
 import inspect
+import json
+
 
 from collections import namedtuple
 from bisect import insort
 
 from daemon import DaemonContext
-from znappy import models
+from znappy import models, keyvalue
 
-logger = logging.getLogger()
+logging.basicConfig(format="%(asctime)s [%(name)-24.24s] [%(funcName)-16.16s] [%(levelname)-8.8s] %(message)s")
+logger = logging.getLogger(__name__)
+logging.getLogger().setLevel(logging.DEBUG)
 
 
 class PrioritizedHandler(namedtuple('PrioritizedHandler', ('priority','driver','callback'))):
@@ -22,13 +27,15 @@ class ZnappyDaemon(object):
     def __init__(self, db, cluster = 'default'):
         self.db       = db
         self.cluster  = models.Cluster(cluster)
-        self.host     = cluster.hosts[db.node]
+        self.host     = self.cluster.hosts[db.node]
 
         self.load_config()
 
 
     def load_config(self):
-        index, data = db.get('service/znappy/config')
+        index, data = self.db.get('service/znappy/config')
+
+        logger.debug(data)
 
         if data is None:
             self.config = {}
@@ -46,34 +53,42 @@ class ZnappyDaemon(object):
 
                 # TODO I wanna get rid of this parameter so I don't need
                 # reload all the drivers on each run
-                pkg.load_handlers(drivers[driver], self.snapshot)
+                pkg.load_handlers(drivers[driver], self.snapshot, register=self.register)
             except (ImportError, Exception), e:
+                raise e
                 logger.warn("Failed to load driver: {}.. skipping".format(e.message))
 
 
     def check_update(self):
-        if host.snapshots():
+        if self.host.snapshots:
             last = max(self.host.snapshots, key=lambda s: s.time)
 
-            if last.time > int(time.time() - self.config['min_age']):
+            if last.time > int(time.time() - self.config.get('snapshot', {'min_age': 3600})['min_age']):
+                logger.debug('last snapshot is ok')
                 return False
 
         return True
 
 
     def clean_snapshots(self):
-        for driver in self.config.get('drivers', []):
+        drivers = self.config.get('drivers', [])
+        logger.debug('cleaning old snapshots')
+        logger.debug(drivers)
+
+        for driver in drivers:
             snapshots = filter(lambda s: s.driver == driver, self.host.snapshots)
+            logger.debug(snapshots)
             snapshots = sorted(snapshots, key=lambda s: s.time, reverse=True)
+            logger.debug(snapshots)
 
             self.execute_event(['delete_snapshot'], driver, snapshots)
 
 
-    def register_handler(self, event, handler, priority=0):
-        caller = inspect.getmodule*(inspect.stack()[1][0]).__name__
-        logger.debug("caller: {0}, event: {1}, priority {2}".format(caller,event,priority))
+    def register(self, event, handler, priority=0):
+        caller = inspect.getmodule(inspect.stack()[1][0]).__name__
+        logger.debug("caller: {0}, event: {1}, priority {2}, handler={3}".format(caller,event,priority, handler))
 
-        handler = PriotiredHandler(priority, caller, handler)
+        handler = PrioritizedHandler(priority, caller, handler)
 
         event_handlers = self.handlers.setdefault(event, [])
         insort(event_handlers, handler)
@@ -83,16 +98,16 @@ class ZnappyDaemon(object):
         matching_handlers = []
 
         for e in list(events) + ["all"]:
-            matching_handlers += handlers.get(e, [])
+            matching_handlers += self.handlers.get(e, [])
 
         matching_handlers = sorted(matching_handlers)
 
         if driver:
-            matching_handlers = filter(lambda h: h.driver == driver, matchting_handlers)
+            matching_handlers = filter(lambda h: h.driver == driver, matching_handlers)
 
         logger.debug("[{2}] {0} => {1}".format(list(events), matching_handlers, driver))
 
-        for handler in matching_handlers():
+        for handler in matching_handlers:
             self.execute_handler(handler, *args, **kwargs)
 
 
@@ -110,39 +125,51 @@ class ZnappyDaemon(object):
 
         while self.running:
             self.snapshot = models.Snapshot(None, self.host)    
-            self.handlers = self.load_drivers()
+            self.load_drivers()
+
+            logger.debug(self.handlers)
 
             if self.check_update() and self.cluster.lock():
                 self.runner()
 
+            self.db.ping()
             time.sleep(3)
 
+        logger.debug('ending..')
+        self.db.close()
 
-    def runnner(self):
+    def runner(self):
         try:
             self.execute_event(['pre_snapshot'])
             self.execute_event(['start_snapshot'])
             self.execute_event(['create_snapshot'])
             self.execute_event(['save_snapshot'])
         except Exception, e:
-            logger.debug(e)
+            raise e
         finally:
             self.execute_event(['end_snapshot'])
             self.execute_event(['post_snapshot'])
 
         self.clean_snapshots()
 
-    def stop(self):
+    def stop(self, sig, frame):
         self.running = False
 
+        return True
 
-agent = ZnappyDaemon()
+
+db = keyvalue.KeyValue(host='10.32.25.161')
+db.connect()
+
+models.db = db
+
+agent = ZnappyDaemon(db)
 
 signal.signal(signal.SIGINT, agent.stop)
 
 # temp for compatibility
-def register_handler(event,handler, priority=0):
-    agent.register(event,handler,priority)
+#def register_handler(event,handler, priority=0):
+#    agent.register_handler(event,handler,priority)
 
 
 agent.run()

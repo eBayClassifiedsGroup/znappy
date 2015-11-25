@@ -77,7 +77,7 @@ def query(query):
     return result
 
 
-def load_handlers(_config, keystore):
+def load_handlers(_config, keystore, register=register_handler):
     global config
 
     config = _config
@@ -85,12 +85,12 @@ def load_handlers(_config, keystore):
     logger.debug('called with config: {}'.format(config))
 
     # agent
-    register_handler("start_snapshot", lock_mysql)
-    register_handler("end_snapshot", unlock_mysql)
+    register("start_snapshot", lock_mysql)
+    register("end_snapshot", unlock_mysql)
     #register_handler("start_snapshot", stop_replication, priority=0)
     #register_handler("start_snapshot", flush_tables, priority=1)
-    register_handler("end_snapshot", start_replication)
+    #register_handler("end_snapshot", start_replication)
 
     # restore
-    register_handler("start_restore", stop_mysql)
-    register_handler("end_restore", start_mysql)
+    register("start_restore", stop_mysql)
+    register("end_restore", start_mysql)
