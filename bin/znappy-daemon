@@ -137,6 +137,7 @@ class ZnappyDaemon(object):
 
             if self.check_update() and self.cluster.lock():
                 self.runner()
+                self.cluster.release()
 
             self.db.ping()
             time.sleep(3)

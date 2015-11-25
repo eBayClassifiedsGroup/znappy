@@ -31,6 +31,7 @@ setup(
         "python-mysqldb",
         "python-pyyaml",
         "python-prettytable",
+        "python-daemon",
     ],
     scripts=[
         'bin/znappy',
