@@ -30,6 +30,7 @@ setup(
         "python-consul",
         "python-mysqldb",
         "python-pyyaml",
+        "python-prettytable",
     ],
     scripts=[
         'bin/znappy',

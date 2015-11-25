@@ -1,18 +1,19 @@
 """
 Usage:
     znappy snapshot
-    znappy snapshot list [options]
+    znappy snapshot list [--cluster=<cluster>] [options]
     znappy snapshot restore <name> [--cluster=<cluster>]
-
-Commands:
-    list        List snapshots in the keystore
-    restore     Restore a snapshot
 
 Options:
     -h, --help                         Display this help
     -c=<cluster>, --cluster=<cluster>  Cluster name [default: default]
     -s=<column>, --sort=<column>       Output column to sort in [default: name]
     -r, --reverse                      Reverse the sorting of the output
+
+Commands:
+    list        List snapshots in the keystore
+    restore     Restore a snapshot
+
 """
 
 from znappy import utils, models
