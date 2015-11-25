@@ -1,12 +1,11 @@
 #!/usr/bin/env python
 import signal
 import time
-import logging
+import logging, logging.handlers
 import importlib
 import inspect
 import json
 import os
-
 
 from collections import namedtuple
 from bisect import insort
@@ -16,8 +15,8 @@ from znappy import models, keyvalue
 
 logging.basicConfig(format="%(asctime)s [%(name)-24.24s] [%(funcName)-16.16s] [%(levelname)-8.8s] %(message)s")
 logger = logging.getLogger(__name__)
-logging.getLogger().setLevel(logging.DEBUG)
-
+logging.getLogger().addHandler(logging.handlers.SysLogHandler(address='/dev/log'))
+logging.getLogger('urllib3.connectionpool').setLevel(logging.WARNING)
 
 class PrioritizedHandler(namedtuple('PrioritizedHandler', ('priority','driver','callback'))):
     def __lt__(self, other):
@@ -26,11 +25,16 @@ class PrioritizedHandler(namedtuple('PrioritizedHandler', ('priority','driver','
 
 class ZnappyDaemon(object):
     def __init__(self, db, cluster = 'default'):
-        self.db       = db
-        self.cluster  = models.Cluster(cluster)
-        self.host     = self.cluster.hosts[db.node]
+        self.db           = db
+        self.cluster_name = cluster
 
+        self.load_cluster()
         self.load_config()
+
+
+    def load_cluster(self):
+        self.cluster  = models.Cluster(self.cluster_name)
+        self.host     = self.cluster.hosts[self.db.node]
 
 
     def load_config(self):
@@ -38,10 +42,10 @@ class ZnappyDaemon(object):
 
         logger.debug(data)
 
-        if data is None:
-            self.config = {}
-        else:
+        if data:
             self.config = json.loads(data['Value'])
+        else:
+            self.config = {}
 
 
     def load_drivers(self):
@@ -126,6 +130,7 @@ class ZnappyDaemon(object):
 
         while self.running:
             self.snapshot = models.Snapshot(None, self.host)    
+            self.load_cluster()
             self.load_drivers()
 
             logger.debug(self.handlers)
@@ -146,7 +151,7 @@ class ZnappyDaemon(object):
             self.execute_event(['create_snapshot'])
             self.execute_event(['save_snapshot'])
         except Exception, e:
-            raise e
+            logger.debug(e)
         finally:
             self.execute_event(['end_snapshot'])
             self.execute_event(['post_snapshot'])
@@ -161,6 +166,9 @@ class ZnappyDaemon(object):
 
 cluster_name = os.environ.get('ZNAPPY_CLUSTER', 'default')
 consul_host  = os.environ.get('ZNAPPY_CONSUL', 'localhost')
+debug_level  = os.environ.get('ZNAPPY_DEBUG_LEVEL', 'INFO')
+
+logging.getLogger().setLevel(debug_level)
 
 db = keyvalue.KeyValue(host=consul_host)
 
