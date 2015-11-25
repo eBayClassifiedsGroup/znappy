@@ -5,6 +5,7 @@ import logging
 import importlib
 import inspect
 import json
+import os
 
 
 from collections import namedtuple
@@ -158,12 +159,15 @@ class ZnappyDaemon(object):
         return True
 
 
-db = keyvalue.KeyValue()
+cluster_name = os.environ.get('ZNAPPY_CLUSTER', 'default')
+consul_host  = os.environ.get('ZNAPPY_CONSUL', 'localhost')
+
+db = keyvalue.KeyValue(host=consul_host)
 
 with db:
     models.db = db
 
-    agent = ZnappyDaemon(db)
+    agent = ZnappyDaemon(db, cluster=cluster_name)
 
     signal.signal(signal.SIGINT, agent.stop)
 
