@@ -158,18 +158,13 @@ class ZnappyDaemon(object):
         return True
 
 
-db = keyvalue.KeyValue(host='10.32.25.161')
-db.connect()
+db = keyvalue.KeyValue()
 
-models.db = db
+with db:
+    models.db = db
 
-agent = ZnappyDaemon(db)
+    agent = ZnappyDaemon(db)
 
-signal.signal(signal.SIGINT, agent.stop)
+    signal.signal(signal.SIGINT, agent.stop)
 
-# temp for compatibility
-#def register_handler(event,handler, priority=0):
-#    agent.register_handler(event,handler,priority)
-
-
-agent.run()
+    agent.run()
