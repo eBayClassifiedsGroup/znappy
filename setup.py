@@ -37,5 +37,8 @@ setup(
         'bin/znappy',
         'bin/znappy-daemon',
     ],
+    data_files=[
+        ('/etc/init.d/', ['etc/init.d/znappy-daemon'])
+    ]
 )
 

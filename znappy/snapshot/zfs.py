@@ -81,7 +81,7 @@ class ZFSSnapshot(object):
         if len(snapshots) <= self.rotate:
             return True, 'No snapshots need to be deleted'
 
-        snapshots = snapshots[self.rotate:]
+        snapshots = snapshots[(self.rotate-1):]
 
         for s in snapshots:
             try:

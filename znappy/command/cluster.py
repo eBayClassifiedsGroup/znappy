@@ -65,9 +65,13 @@ def action_restore(cluster, t):
     snapshots = list_snapshots(cluster, t)
 
     print snapshot_table(snapshots, t).get_string(sortby='host')
+    print snapshots
+
+    master_election = sorted(snapshots.values(), key=lambda s: s.time)[0]
+    print master_election
+    print master_election.host
 
     choice = raw_input("Are you sure? [y/N]: ").lower()
-
     if choice != 'y':
         return "Aborted!"
 
