@@ -43,7 +43,7 @@ def list_snapshots(cluster, t):
 
 
 def snapshot_table(snapshots, t = int(time.time())):
-    table = PrettyTable(field_names=['host', 'snapshot', 'time', 'lag'])
+    table = PrettyTable(fields=['host', 'snapshot', 'time', 'lag'])
     
     for host in snapshots:
         snapshot = snapshots[host]
@@ -65,11 +65,10 @@ def action_restore(cluster, t):
     snapshots = list_snapshots(cluster, t)
 
     print snapshot_table(snapshots, t).get_string(sortby='host')
-    print snapshots
 
-    master_election = sorted(snapshots.values(), key=lambda s: s.time)[0]
-    print master_election
-    print master_election.host
+    master = sorted(snapshots.values(), key=lambda s: s.time, reverse=True)[0].host
+
+    print "Master host will be: {}".format(master.name)
 
     choice = raw_input("Are you sure? [y/N]: ").lower()
     if choice != 'y':
@@ -83,7 +82,7 @@ def action_restore(cluster, t):
 
     # lock the whole cluster
     while not cluster.lock():
-        pass
+        time.sleep(0.5)
 
     # time to bork the sjit
     try:

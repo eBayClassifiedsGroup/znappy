@@ -7,7 +7,7 @@ def read(fname):
 
 setup(
     name="znappy",
-    version="0.1.3",
+    version="0.1.4",
     author="Jorn Wijnands",
     author_email="jwijnands@ebay.com",
     maintainer="Jorn Wijnands",
@@ -26,19 +26,20 @@ setup(
         "License :: GPL License",
     ],
     install_requires=[
-        "python-docopt",
+        "fabric",
         "python-consul",
-        "python-mysqldb",
-        "python-pyyaml",
-        "python-prettytable",
         "python-daemon",
+        "python-docopt",
+        "python-mysqldb",
+        "python-prettytable",
+        "python-pyyaml",
     ],
     scripts=[
         'bin/znappy',
         'bin/znappy-daemon',
     ],
     data_files=[
-        ('/etc/init.d/', ['etc/init.d/znappy-daemon'])
+        ('/etc/init/', ['etc/init/znappy-daemon.conf'])
     ]
 )
 

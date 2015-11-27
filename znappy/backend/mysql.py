@@ -87,9 +87,6 @@ def load_handlers(_config, keystore, register=register_handler):
     # agent
     register("start_snapshot", lock_mysql)
     register("end_snapshot", unlock_mysql)
-    #register_handler("start_snapshot", stop_replication, priority=0)
-    #register_handler("start_snapshot", flush_tables, priority=1)
-    #register_handler("end_snapshot", start_replication)
 
     # restore
     register("start_restore", stop_mysql)

@@ -23,6 +23,10 @@ class PrioritizedHandler(namedtuple('PrioritizedHandler', ('priority','driver','
         return self.priority < other.priority
 
 
+class ZnappyEventException(Exception):
+    pass
+
+
 class ZnappyDaemon(object):
     def __init__(self, db, cluster = 'default'):
         self.db           = db
@@ -113,16 +117,19 @@ class ZnappyDaemon(object):
         logger.debug("[{2}] {0} => {1}".format(list(events), matching_handlers, driver))
 
         for handler in matching_handlers:
-            self.execute_handler(handler, *args, **kwargs)
+            result, message = self.execute_handler(handler, *args, **kwargs)
+
+            if not result:
+                logger.critical("Failed to execute handler: handlers={0}, message={1}".format(handlers, message))
+                raise ZnappyEventException()
 
 
     def execute_handler(self, handler, *args, **kwargs):
         try:
-            handler.callback(*args, **kwargs)
+            return handler.callback(*args, **kwargs)
         except Exception, e:
-            logger.debug("something went booboo..")
-            # TODO: don't do anything with the exceptions now
-            raise e
+            logger.debug(e.message)
+            return False, ''
 
 
     def run(self):

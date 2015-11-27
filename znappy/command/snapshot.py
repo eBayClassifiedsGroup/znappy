@@ -31,7 +31,7 @@ def action_list(snapshots, args):
 
     logger.debug(snapshots)
 
-    table = PrettyTable(field_names=["name","driver","target","time"])
+    table = PrettyTable(fields=["name","driver","target","time"])
 
     for s in snapshots:
         table.add_row([s.name, s.driver, s.target, s.time])

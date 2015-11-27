@@ -47,7 +47,16 @@ class KeyValue(object):
 
 
     def put(self, *args, **kwargs):
-        return self._consul.kv.put(*args, **kwargs)
+        n     = 0
+        retry = True
+
+        while retry:
+            try:
+                return self._consul.kv.put(*args, **kwargs)
+            except Exception:
+                if n > 1:
+                    retry = False
+                n+=1
 
 
     def delete(self, *args, **kwargs):
