@@ -15,12 +15,7 @@ class Model(object):
 class Cluster(Model):
     def __init__(self, name = 'default'):
         self.name  = name
-
-        logger.debug(self.path())
-
         self.hosts = self._load_hosts()
-
-        logger.debug(self.hosts)
 
 
     def _load_hosts(self):
@@ -29,14 +24,10 @@ class Cluster(Model):
             db.get("{}/".format(self.path()), keys=True)[1] or []
         )
 
-        logger.debug(keys)
-
         keys = set(filter(
             lambda n: not(len(n) == 0 or n[0] == '.'),
             keys
         ))
-
-        logger.debug(keys)
 
         return {k: Host(k, self) for k in keys}
 
@@ -65,9 +56,6 @@ class Host(object):
     def __init__(self, name = None, cluster = None):
         self.name      = name or db.node
         self.cluster   = cluster
-
-        logger.debug(self.path())
-
         self.snapshots = self._load_snapshots()
 
 
@@ -83,13 +71,14 @@ class Host(object):
                 db.get("{0}/snapshots/".format(self.path()), keys=True)[1] or []
         )))
 
-        logger.debug(keys)
-
         return map(lambda v: Snapshot(v, host=self), keys)
 
 
     def save(self):
         db.put(self.path(), None)
+
+        # add it to the cluster, to prevent reloading
+        self.cluster.hosts[self.name] = self
 
         for snapshot in self.snapshots:
             snapshot.save()
@@ -108,7 +97,6 @@ class Snapshot(object):
         self.host    = host
 
         if self.name is not None:
-            logger.debug(self.path())
             self.driver, self.target, self.time = self._load()
 
 
@@ -123,6 +111,9 @@ class Snapshot(object):
 
 
     def save(self):
+        #update host
+        self.host.snapshots[self.name] = self
+
         return db.put(self.path(), json.dumps({
             'name':   self.name,
             'driver': self.driver,

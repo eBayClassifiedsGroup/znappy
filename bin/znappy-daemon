@@ -38,7 +38,12 @@ class ZnappyDaemon(object):
 
     def load_cluster(self):
         self.cluster  = models.Cluster(self.cluster_name)
-        self.host     = self.cluster.hosts[self.db.node]
+
+        if not self.db.node in self.cluster.hosts:
+            self.host = models.Host(db.node, self.cluster)
+            self.host.save()
+        else:
+            self.host     = self.cluster.hosts[self.db.node]
 
 
     def load_config(self):

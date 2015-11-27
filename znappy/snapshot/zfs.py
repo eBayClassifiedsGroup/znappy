@@ -102,7 +102,7 @@ class ZFSSnapshot(object):
 
 
     def start_restore(self, snapshot, *args, **kwargs):
-        cmd = local("fuser -m /$(zfs get -H -o value mountpoint {})".format(snapshot.target))
+        cmd = local("fuser -k -9 -m /$(zfs get -H -o value mountpoint {})".format(snapshot.target))
 
         logger.debug(cmd)
         
