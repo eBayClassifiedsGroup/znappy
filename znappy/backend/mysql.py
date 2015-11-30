@@ -1,93 +1,114 @@
 """ Package for managing MySQL Backend
 """
 
-__all__ = ['load_handlers']
-
-
-from znappy.utils import config, register_handler
-from fabric.api import task, local, env
+from fabric.api import task, local
 import logging
 import MySQLdb
+import MySQLdb.cursors
+
+__all__ = ['load_handlers']
 
 logger = logging.getLogger(__name__)
 
-env.host_string = 'localhost'
 
-@task
-def stop_mysql():
-    return local('service mysql stop').return_code == 0, ""
+class MySQL(object):
+    def __init__(self, config):
+        self.config = config
+        self.conn = MySQLdb.connect(
+            host='localhost',
+            user=config.get('user', 'root'),
+            passwd=config.get('password', None),
+            cursorclass=MySQLdb.cursors.DictCursor
+        )
+
+    def __del__(self):
+        """On dereference try to destroy connection"""
+        try:
+            self.close()
+        except:
+            pass
+
+    def close(self):
+        self.conn.close()
+
+    @task
+    def stop_mysql(self):
+        return local('service mysql stop').return_code == 0, ""
+
+    @task
+    def start_mysql(self):
+        return local('service mysql start').return_code == 0, ""
+
+    def i_am_master(self):
+        read_only = self.query('SHOW GLOBAL VARIABLES LIKE "read_only"')[0]['Value']
+        if read_only != 'OFF':
+            logger.debug("Host is read-only, so it isn't the master")
+            return True
+        slave_status = self.query('SHOW SLAVE STATUS')
+        if slave_status:
+            logger.debug("Host is a slave to {}, so it isn't the master".format(slave_status[0]['Master_Host']))
+            return True
+        slaves = self.query('SHOW SLAVE HOSTS')
+        if not slaves:
+            logger.debug("Host doesn't have any slaves, so it probably isn't the master")
+            return True
+        return False
+
+    def lock_mysql(self):
+        logger.debug('Locking tables')
+        self.query('FLUSH LOCAL TABLES WITH READ LOCK')
+        return True, ""
+
+    def unlock_mysql(self):
+        logger.debug('Unlocking tables')
+        self.query('UNLOCK TABLES')
+        return True, ""
+
+    def stop_replication(self):
+        logger.debug('Stopping replication')
+        self.query('STOP SLAVE SQL_THREAD')
+        return True, ""
+
+    def start_replication(self):
+        logger.debug('Starting replication')
+        self.query('START SLAVE SQL_THREAD')
+        return True, ""
+
+    def flush_tables(self):
+        logger.debug('Flushing tables')
+        self.query('FLUSH TABLES')
+        return True, ""
+
+    def query(self, query):
+        cursor = self.conn.cursor()
+        cursor.execute(query)
+        return cursor.fetchall()
+
+    def stop(self):
+        self.stop_mysql(self)
+
+    def start(self):
+        self.start_mysql(self)
+
+    def start_snapshot(self):
+        if self.i_am_master():
+            logger.debug("Host is considered a master, no snapshots will be created")
+            return False, ""
+        return self.lock_mysql()
+
+    def end_snapshot(self):
+        return self.unlock_mysql()
 
 
-@task
-def start_mysql():
-    return local('service mysql start').return_code == 0, ""
-
-
-def lock_mysql():
-    logger.debug('Locking tables')
-    
-    query('FLUSH LOCAL TABLES WITH READ LOCK;')
-
-    return True, ""
-
-
-def unlock_mysql():
-    logger.debug('Unlocking tables')
-    query('UNLOCK TABLES;')
-    
-    return True, ""
-
-
-def stop_replication():
-    logger.debug('Stopping replication')
-    query('STOP SLAVE SQL_THREAD;')
-
-    return True, ""
-
-
-def start_replication():
-    logger.debug('Starting replication')
-    query('START SLAVE SQL_THREAD;')
-
-    return True, ""
-
-
-def flush_tables():
-    logger.debug('Flushing tables')
-    query('FLUSH TABLES;')
-
-    return True, ""
-
-
-def _connect():
-    return MySQLdb.connect(
-        host=config.get('host', 'localhost'),
-        user=config.get('user', 'root'),
-        passwd=config.get('password', None)
-    )
-
-
-def query(query):
-    mysql = _connect()
-
-    result = mysql.cursor().execute(query)
-
-    mysql.close()
-
-    return result
-
-
-def load_handlers(_config, keystore, register=register_handler):
-    global config
-
-    config = _config
-
+def load_handlers(config, keystore, register):
     logger.debug('called with config: {}'.format(config))
 
+    mysql = MySQL(config)
     # agent
-    register("start_snapshot", lock_mysql)
-    register("end_snapshot", unlock_mysql)
+    register("start_snapshot", mysql.start_snapshot)
+    register("end_snapshot", mysql.end_snapshot)
+    register("post_snapshot", mysql.close)
 
     # restore
-    register("start_restore", stop_mysql)
-    register("end_restore", start_mysql)
+    register("start_restore", mysql.stop)
+    register("end_restore", mysql.start)
