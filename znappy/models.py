@@ -112,8 +112,6 @@ class Snapshot(object):
 
     def save(self):
         #update host
-        self.host.snapshots[self.name] = self
-
         return db.put(self.path(), json.dumps({
             'name':   self.name,
             'driver': self.driver,

@@ -54,7 +54,8 @@ def load_drivers(config, snapshot):
 
             pkg.load_handlers(
                 config['drivers'].get(pkgname, {}),
-                snapshot
+                snapshot,
+                register_handler
             )
         except ImportError, e:
             logger.info("Failed to load package: {}.. skipping".format(e.message))

@@ -31,6 +31,8 @@ class MySQL(object):
     def close(self):
         self.conn.close()
 
+        return True, ""
+
     @task
     def stop_mysql(self):
         return local('service mysql stop').return_code == 0, ""
@@ -43,16 +45,16 @@ class MySQL(object):
         read_only = self.query('SHOW GLOBAL VARIABLES LIKE "read_only"')[0]['Value']
         if read_only != 'OFF':
             logger.debug("Host is read-only, so it isn't the master")
-            return True
+            return False
         slave_status = self.query('SHOW SLAVE STATUS')
         if slave_status:
             logger.debug("Host is a slave to {}, so it isn't the master".format(slave_status[0]['Master_Host']))
-            return True
+            return False
         slaves = self.query('SHOW SLAVE HOSTS')
         if not slaves:
             logger.debug("Host doesn't have any slaves, so it probably isn't the master")
-            return True
-        return False
+            return False
+        return True
 
     def lock_mysql(self):
         logger.debug('Locking tables')
