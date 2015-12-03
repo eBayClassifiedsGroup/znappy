@@ -35,11 +35,17 @@ class KeyValue(object):
 
 
     def close(self):
-        self._consul.session.destroy(self._session_id)
+        try:
+            self._consul.session.destroy(self._session_id)
+        except:
+            pass
 
 
     def ping(self):
-        return self._consul.session.renew(self._session_id)
+        try:
+            return self._consul.session.renew(self._session_id)
+        except:
+            pass
 
 
     def get(self, *args, **kwargs):
