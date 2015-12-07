@@ -18,20 +18,11 @@ def main(db, args):
     config = utils.config
 
     with open(args['--config']) as f:
-        bdata = json.load(f)
+        data = json.load(f)
 
-    logger.debug(bdata)
-
-    cluster = bdata.pop('cluster', 'default')
-    
+    cluster = os.eviron.get('ZNAPPY_CLUSTER')
     # create the config key
     db.put(
-        'service/znappy/config',
-        json.dumps(bdata)
-    )
-
-    # create directory for hosts
-    db.put(
-        'service/znappy/{}/'.format(cluster),
-        None
+        'service/znappy/clusters/{}/config'.format(cluster),
+        json.dumps(data)
     )

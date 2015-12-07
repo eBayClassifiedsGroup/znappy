@@ -7,7 +7,7 @@ def read(fname):
 
 setup(
     name="znappy",
-    version="0.1.6",
+    version="0.1.7",
     author="Jorn Wijnands",
     author_email="jwijnands@ebay.com",
     maintainer="Jorn Wijnands",
@@ -39,7 +39,8 @@ setup(
         'bin/znappy-daemon',
     ],
     data_files=[
-        ('/etc/init/', ['etc/init/znappy-daemon.conf'])
+        ('/etc/init/', ['etc/init/znappy-daemon.conf']),
+        ('/etc/znappy/', ['etc/znappy/config.json-sample'])
     ]
 )
 

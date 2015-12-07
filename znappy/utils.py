@@ -1,7 +1,7 @@
 from collections import namedtuple
 from bisect import insort
 import logging
-import json
+import json, yaml
 import importlib
 import inspect
 
@@ -32,19 +32,19 @@ events = [
 ]
 
 
-def load_config(db):
-    global config
+def local_config(args = {}):
+    try:
+        with open('/etc/znappy/config.yaml') as f:
+            config = yaml.load(f)
+            args['--cluster'] = config.get('cluster')
+            args['--log-level'] = str.upper(config.get('log-level', 'WARN'))
+            args['--host']    = config.get('consul', {}).get('hostname', 'localhost')
+            args['--port']    = config.get('consul', {}).get('port', 8500)
+    except Exception, e:
+        logger.warn('Failed to load local configuration!')
+        exit(1)
 
-    index, data = db.get('service/znappy/config')
-
-    logger.debug(data)
-
-    if data is None:
-        config = {}
-    else:
-        config = json.loads(data['Value'])
-
-    return config
+    return args
 
 
 def load_drivers(config, snapshot):

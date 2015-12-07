@@ -4,7 +4,6 @@ Usage:
 
 Options:
     -f, --force    Force create a snapshot, this bypasses the pre_/post_ phase and the locking agent
-    -c=<NAME>, --cluster=<NAME>  Cluster name [default: default]
 """
 
 from znappy import models, utils
@@ -51,25 +50,20 @@ def clean_snapshots(host, config):
     
 
 def main(db, args):
-    config = utils.config
-
     logger.debug("Using arguments: {0}".format(args))
-    logger.debug("Using configuration: {0}".format(config))
-
-    logger.debug(db.__dict__)
 
     # create a cluster from the argument, use default is not specified
     cluster  = models.Cluster(args['--cluster'])
     host     = cluster.hosts[db.node]
 
-    snapshot = models.Snapshot(None, host)
+    snapshot = models.Snapshot(host, None)
 
     # load drivers from 
-    utils.load_drivers(config, snapshot)
+    utils.load_drivers(cluster.config, snapshot)
 
     # preflight check
     # TODO the check_update should be per driver
-    if check_update(host, config['snapshot']) and cluster.lock():
+    if check_update(host, cluster.config['snapshot']) and cluster.lock():
         try:
             # notify drivers that we are ready to start snapshotting
             utils.execute_event(['pre_snapshot', 'all_agent'])

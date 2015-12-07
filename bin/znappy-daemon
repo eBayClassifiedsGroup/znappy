@@ -12,6 +12,7 @@ from bisect import insort
 
 from daemon import DaemonContext
 from znappy import models, keyvalue
+from znappy.utils import local_config
 
 logging.basicConfig(format="%(asctime)s [%(name)-24.24s] [%(funcName)-16.16s] [%(levelname)-8.8s] %(message)s")
 logger = logging.getLogger(__name__)
@@ -29,15 +30,14 @@ class ZnappyEventException(Exception):
 
 class ZnappyDaemon(object):
     def __init__(self, db, cluster):
-        self.db           = db
-        self.cluster_name = cluster
+        self.db          = db
+        self.clustername = cluster
 
         self.load_cluster()
         self.load_config()
 
-
     def load_cluster(self):
-        self.cluster  = models.Cluster(self.cluster_name)
+        self.cluster  = models.Cluster(self.clustername)
 
         if not self.db.node in self.cluster.hosts:
             self.host = models.Host(self.cluster, db.node)
@@ -45,17 +45,8 @@ class ZnappyDaemon(object):
         else:
             self.host     = self.cluster.hosts[self.db.node]
 
-
     def load_config(self):
-        index, data = self.db.get('service/znappy/config')
-
-        logger.debug(data)
-
-        if data:
-            self.config = json.loads(data['Value'])
-        else:
-            self.config = {}
-
+        self.config = self.cluster.config
 
     def load_drivers(self):
         self.handlers = {}
@@ -72,7 +63,6 @@ class ZnappyDaemon(object):
                 raise e
                 logger.warn("Failed to load driver: {}.. skipping".format(e.message))
 
-
     def check_update(self):
         snapshots = self.host.snapshots.values()
         if snapshots:
@@ -83,7 +73,6 @@ class ZnappyDaemon(object):
                 return False
 
         return True
-
 
     def clean_snapshots(self):
         drivers   = self.config.get('drivers', [])
@@ -99,7 +88,6 @@ class ZnappyDaemon(object):
 
             self.execute_event(['delete_snapshot'], driver, driver_snapshots)
 
-
     def register(self, event, handler, priority=0):
         caller = inspect.getmodule(inspect.stack()[1][0]).__name__
         logger.debug("caller: {0}, event: {1}, priority {2}, handler={3}".format(caller,event,priority, handler))
@@ -108,7 +96,6 @@ class ZnappyDaemon(object):
 
         event_handlers = self.handlers.setdefault(event, [])
         insort(event_handlers, handler)
-
 
     def execute_event(self, events, driver = None, *args, **kwargs):
         matching_handlers = []
@@ -127,9 +114,8 @@ class ZnappyDaemon(object):
             result, message = self.execute_handler(handler, *args, **kwargs)
 
             if not result:
-                logger.critical("Failed to execute handler: handlers={0}, message={1}".format(handlers, message))
+                logger.critical("Failed to execute handler: handlers={0}, message={1}".format(handler, message))
                 raise ZnappyEventException()
-
 
     def execute_handler(self, handler, *args, **kwargs):
         try:
@@ -137,7 +123,6 @@ class ZnappyDaemon(object):
         except Exception, e:
             logger.warn(e.message)
             return False, ''
-
 
     def run(self):
         self.running = True
@@ -155,9 +140,6 @@ class ZnappyDaemon(object):
 
             self.db.ping()
             time.sleep(10)
-
-        logger.debug('ending..')
-        self.db.close()
 
     def runner(self):
         try:
@@ -179,25 +161,21 @@ class ZnappyDaemon(object):
         return True
 
 
-cluster_name = os.environ.get('ZNAPPY_CLUSTER')
-consul_host  = os.environ.get('ZNAPPY_CONSUL', 'localhost')
-debug_level  = os.environ.get('ZNAPPY_DEBUG_LEVEL', 'INFO')
+args = local_config()
 
 
-if not cluster_name:
+if not args['--cluster']:
     logger.fatal('No cluster name provided.. stopping!')
     exit(0)
 
 
-logging.getLogger().setLevel(debug_level)
+logging.getLogger().setLevel(args['--log-level'])
 
-db = keyvalue.KeyValue(host=consul_host)
+db = keyvalue.KeyValue(host=args['--host'], port=args['--port'])
 
 with db:
     models.db = db
-
-    agent = ZnappyDaemon(db, cluster=cluster_name)
+    agent     = ZnappyDaemon(db, args['--cluster'])
 
     signal.signal(signal.SIGINT, agent.stop)
-
     agent.run()

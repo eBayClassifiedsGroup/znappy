@@ -1,12 +1,11 @@
 """
 Usage:
     znappy snapshot
-    znappy snapshot list [--cluster=<cluster>] [options]
-    znappy snapshot restore <name> [--cluster=<cluster>]
+    znappy snapshot list [options]
+    znappy snapshot restore <name>
 
 Options:
     -h, --help                         Display this help
-    -c=<cluster>, --cluster=<cluster>  Cluster name [default: default]
     -s=<column>, --sort=<column>       Output column to sort in [default: name]
     -r, --reverse                      Reverse the sorting of the output
 
@@ -24,7 +23,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def action_list(snapshots, args):
+def action_list(config, args, snapshots):
     if len(snapshots) == 0:
         print "No snapshots found on this machine"
         exit(0)
@@ -39,7 +38,7 @@ def action_list(snapshots, args):
     print table.get_string(sortby=args['--sort'], reversesort=args['--reverse'])
 
 
-def action_restore(snapshots, args):
+def action_restore(config, args, snapshots):
     logger.debug(snapshots)
     logger.debug(args)
 
@@ -51,7 +50,7 @@ def action_restore(snapshots, args):
 
     snapshot = candidates[0]
 
-    utils.load_drivers(utils.config, snapshot)
+    utils.load_drivers(config, snapshot)
 
     try:
         utils.execute_event(['pre_restore'])
@@ -65,17 +64,14 @@ def action_restore(snapshots, args):
 
 
 def main(db, args):
-    config = utils.config
-
     logger.debug("Using arguments: {0}".format(args))
-    logger.debug("Using configuration: {0}".format(config))
 
     module = sys.modules[__name__]
 
     cluster = models.Cluster(args['--cluster'])
-    host    = cluster.hosts[db.node]
+    host    = models.Host(cluster)
 
     for c in ['list', 'restore']:
         if args[c] and hasattr(module, 'action_{}'.format(c)):
             command = getattr(module, 'action_{}'.format(c))
-            command(host.snapshots, args)
+            command(cluster.config, args, host.snapshots)

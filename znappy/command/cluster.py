@@ -100,10 +100,6 @@ def action_restore(cluster, t):
 
 
 def main(db, args):
-    config = utils.config
-    logger.debug(args)
-    logger.debug(db)
-
     module  = sys.modules[__name__]
     cluster = models.Cluster(args['--cluster'])
 
