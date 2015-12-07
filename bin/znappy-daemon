@@ -28,7 +28,7 @@ class ZnappyEventException(Exception):
 
 
 class ZnappyDaemon(object):
-    def __init__(self, db, cluster = 'default'):
+    def __init__(self, db, cluster):
         self.db           = db
         self.cluster_name = cluster
 
@@ -40,7 +40,7 @@ class ZnappyDaemon(object):
         self.cluster  = models.Cluster(self.cluster_name)
 
         if not self.db.node in self.cluster.hosts:
-            self.host = models.Host(db.node, self.cluster)
+            self.host = models.Host(self.cluster, db.node)
             self.host.save()
         else:
             self.host     = self.cluster.hosts[self.db.node]
@@ -74,8 +74,9 @@ class ZnappyDaemon(object):
 
 
     def check_update(self):
-        if self.host.snapshots:
-            last = max(self.host.snapshots, key=lambda s: s.time)
+        snapshots = self.host.snapshots.values()
+        if snapshots:
+            last = max(snapshots, key=lambda s: s.time)
 
             if last.time > int(time.time() - self.config.get('snapshot', {'min_age': 3600})['min_age']):
                 logger.debug('last snapshot is ok')
@@ -85,17 +86,18 @@ class ZnappyDaemon(object):
 
 
     def clean_snapshots(self):
-        drivers = self.config.get('drivers', [])
+        drivers   = self.config.get('drivers', [])
+        snapshots = self.host.snapshots.values()
         logger.debug('cleaning old snapshots')
         logger.debug(drivers)
 
         for driver in drivers:
-            snapshots = filter(lambda s: s.driver == driver, self.host.snapshots)
-            logger.debug(snapshots)
-            snapshots = sorted(snapshots, key=lambda s: s.time, reverse=True)
-            logger.debug(snapshots)
+            driver_snapshots = filter(lambda s: s.driver == driver, snapshots)
+            logger.debug(driver_snapshots)
+            driver_snapshots = sorted(driver_snapshots, key=lambda s: s.time, reverse=True)
+            logger.debug(driver_snapshots)
 
-            self.execute_event(['delete_snapshot'], driver, snapshots)
+            self.execute_event(['delete_snapshot'], driver, driver_snapshots)
 
 
     def register(self, event, handler, priority=0):
@@ -141,7 +143,7 @@ class ZnappyDaemon(object):
         self.running = True
 
         while self.running:
-            self.snapshot = models.Snapshot(None, self.host)    
+            self.snapshot = models.Snapshot(self.host)
             self.load_cluster()
             self.load_drivers()
 
@@ -152,7 +154,7 @@ class ZnappyDaemon(object):
                 self.cluster.release()
 
             self.db.ping()
-            time.sleep(3)
+            time.sleep(10)
 
         logger.debug('ending..')
         self.db.close()
@@ -177,9 +179,15 @@ class ZnappyDaemon(object):
         return True
 
 
-cluster_name = os.environ.get('ZNAPPY_CLUSTER', 'default')
+cluster_name = os.environ.get('ZNAPPY_CLUSTER')
 consul_host  = os.environ.get('ZNAPPY_CONSUL', 'localhost')
 debug_level  = os.environ.get('ZNAPPY_DEBUG_LEVEL', 'INFO')
+
+
+if not cluster_name:
+    logger.fatal('No cluster name provided.. stopping!')
+    exit(0)
+
 
 logging.getLogger().setLevel(debug_level)
 

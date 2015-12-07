@@ -12,25 +12,32 @@ class Model(object):
         return "{0}({1})".format(self.__class__.__name__, self.name)
 
 
+    def _load_children(self, path_str, obj):
+        path = path_str.format(self.path())
+        keys = filter(None, set(map(
+            lambda k: k.replace(path, "").split("/", 2)[0],
+            db.get(path, keys=True)[1] or []
+        )))
+
+        return {k: obj(self, k) for k in keys}
+
+    def path(self):
+        return self.path_str.format(self.parent, self.name)
+
+
 class Cluster(Model):
-    def __init__(self, name = 'default'):
-        self.name  = name
-        self.hosts = self._load_hosts()
+    path_str = "{}/clusters/{}"
+    parent   = "service/znappy"
 
+    def __init__(self, name):
+        self.name   = name
+        self.config = self._load_config()
+        self.hosts = self._load_children("{}/hosts/", Host)
 
-    def _load_hosts(self):
-        keys = map(
-            lambda k: k.split('/',4)[3],
-            db.get("{}/".format(self.path()), keys=True)[1] or []
-        )
+    def _load_config(self):
+        index, data = db.get("{}/config".format(self.path()))
 
-        keys = set(filter(
-            lambda n: not(len(n) == 0 or n[0] == '.'),
-            keys
-        ))
-
-        return {k: Host(k, self) for k in keys}
-
+        return json.loads(data['Value']) if data else {}
 
     def save(self):
         db.put(self.path(), None)
@@ -38,44 +45,25 @@ class Cluster(Model):
         for host in self.hosts:
             host.save()
 
-
     def lock(self):
         # TODO Test if we can implement a wait_for_lock
         return db.acquire("{}/.lock".format(self.path()))
-
 
     def release(self):
         return db.release("{}/.lock".format(self.path()))
 
 
-    def path(self):
-        return "{0}/{1}".format('service/znappy', self.name)
+class Host(Model):
+    path_str = "{}/hosts/{}"
 
-
-class Host(object):
-    def __init__(self, name = None, cluster = None):
+    def __init__(self, cluster, name = None):
         self.name      = name or db.node
         self.cluster   = cluster
-        self.snapshots = self._load_snapshots()
-
-
-    def __repr__(self):
-        return "{0}({1})".format(self.__class__.__name__, self.name)
-
-
-    def _load_snapshots(self):
-        keys = set(filter(
-            lambda n: n != "",
-            map(
-                lambda k: k.split('/',5)[5],
-                db.get("{0}/snapshots/".format(self.path()), keys=True)[1] or []
-        )))
-
-        return map(lambda v: Snapshot(v, host=self), keys)
-
+        self.parent    = cluster.path()
+        self.snapshots = self._load_children("{}/snapshots/", Snapshot)
 
     def save(self):
-        db.put(self.path(), None)
+        db.put('{}/'.format(self.path()), None)
 
         # add it to the cluster, to prevent reloading
         self.cluster.hosts[self.name] = self
@@ -84,31 +72,21 @@ class Host(object):
             snapshot.save()
 
 
-    def path(self):
-        if self.cluster is None:
-            raise KeyError('cluster not set')
+class Snapshot(Model):
+    path_str = "{}/snapshots/{}"
 
-        return "{0}/{1}".format(self.cluster.path(), self.name)
-
-
-class Snapshot(object):
-    def __init__(self, name, host = None):
+    def __init__(self, host, name = None):
         self.name    = name
         self.host    = host
+        self.parent  = host.path()
 
         if self.name is not None:
             self.driver, self.target, self.time = self._load()
-
-
-    def __repr__(self):
-        return "{0}({1})".format(self.__class__.__name__, self.name)
-
 
     def _load(self):
         data = json.loads(db.get(self.path())[1]['Value'] or "{}")
 
         return map(data.get, ['driver', 'target', 'time'])
-
 
     def save(self):
         #update host
@@ -119,13 +97,5 @@ class Snapshot(object):
             'time':   self.time,
         }))
 
-
     def delete(self):
         return db.delete(self.path())
-
-
-    def path(self):
-        if self.host is None:
-            raise KeyError('host not set')
-
-        return "{0}/snapshots/{1}".format(self.host.path(), self.name)
