@@ -8,24 +8,26 @@ Options:
     --minute=<m>        Minutes ago to search for [default: 15]
 """
 
-from znappy import models, utils
+from znappy import Znappy
 import logging
 import time
 import sys
 import getpass
 from datetime import datetime, timedelta
 from prettytable import PrettyTable
-from fabric.api import env, run, local, settings, sudo, task, hide
+from fabric.api import env, sudo, task
 from fabric.colors import green, red
 
 
 logger = logging.getLogger(__name__)
 
+env.warn_only = True
 
-def verify_credentials():
-    env.host_string = 'localhost'
-    with settings(warn_only=True):
-        return sudo('/bin/true')
+
+@task
+def tsudo(target, cmd):
+    env.host_string = target
+    return sudo(cmd)
 
 
 def list_snapshots(cluster, t):
@@ -52,6 +54,7 @@ def snapshot_table(snapshots, t = int(time.time())):
 
     return table
 
+
 def action_list(cluster, t):
     snapshots = list_snapshots(cluster, t)
 
@@ -76,7 +79,7 @@ def action_restore(cluster, t):
     env.user      = raw_input('[ldap] username: ')
     env.password  = getpass.getpass('[sudo] password for {}: '.format(env.user))
 
-    if not verify_credentials():
+    if not tsudo('localhost', '/bin/true'):
         return 'Failed to verify credentials'
 
     # lock the whole cluster
