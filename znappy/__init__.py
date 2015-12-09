@@ -23,7 +23,7 @@ class ZnappyEventException(Exception):
     def __init__(self, errno = 0, errstr = '', *args):
         super.__init__(self, *args)
         self.errno = errno
-        self.eerstr = errstr
+        self.errstr = errstr
 
 
 class Znappy(object):

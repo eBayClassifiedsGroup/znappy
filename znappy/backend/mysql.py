@@ -94,7 +94,7 @@ class MySQL(object):
 
     def start_snapshot(self):
         if self.i_am_master():
-            logger.debug("Host is considered a master, no snapshots will be created")
+            logger.info("Host is a master, no snapshots will be created")
             return False, ""
         return self.lock_mysql()
 
