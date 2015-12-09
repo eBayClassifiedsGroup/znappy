@@ -6,7 +6,6 @@ Usage:
 
 Options:
     --minute=<m>        Minutes ago to search for [default: 15]
-    --cluster=<name>    Name of the cluster [default: default]
 """
 
 from znappy import models, utils
@@ -100,8 +99,11 @@ def action_restore(cluster, t):
 
 
 def main(db, args):
+    if not args['--cluster']:
+        logger.fatal('No cluster name provided')
     module  = sys.modules[__name__]
-    cluster = models.Cluster(args['--cluster'])
+
+    znappy = Znappy(db, args['--cluster'])
 
     time_before = datetime.today() - timedelta(minutes=int(args['--minute']))
     time_before = int(time.mktime(time_before.timetuple()))
@@ -111,6 +113,6 @@ def main(db, args):
         funcname = 'action_{}'.format(c)
         if args[c] and hasattr(module, funcname):
             action = getattr(module, funcname)
-            result = action(cluster, time_before)
+            result = action(znappy.cluster, time_before)
 
     print result

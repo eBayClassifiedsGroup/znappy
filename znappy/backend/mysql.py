@@ -98,6 +98,12 @@ class MySQL(object):
             return False, ""
         return self.lock_mysql()
 
+    def monitor(self):
+        if self.i_am_master():
+            return False, "OK: Host is a MySQL master"
+        else:
+            return True, "OK: Host is a MySQL slave"
+
     def end_snapshot(self):
         return self.unlock_mysql()
 
@@ -114,3 +120,6 @@ def load_handlers(config, keystore, register):
     # restore
     register("start_restore", mysql.stop)
     register("end_restore", mysql.start)
+
+    # Monitor
+    register("monitor", mysql.monitor)

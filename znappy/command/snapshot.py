@@ -3,6 +3,7 @@ Usage:
     znappy snapshot
     znappy snapshot list [options]
     znappy snapshot restore <name>
+    znappy snapshot delete <name>
 
 Options:
     -h, --help                         Display this help
@@ -32,7 +33,7 @@ def action_list(config, args, snapshots):
 
     table = PrettyTable(fields=["name","driver","target","time"])
 
-    for s in snapshots:
+    for s in snapshots.values():
         table.add_row([s.name, s.driver, s.target, s.time])
 
     print table.get_string(sortby=args['--sort'], reversesort=args['--reverse'])
@@ -42,7 +43,7 @@ def action_restore(config, args, snapshots):
     logger.debug(snapshots)
     logger.debug(args)
 
-    candidates = filter(lambda s: s.name == args['<name>'], snapshots)
+    candidates = filter(lambda s: s.name == args['<name>'], snapshots.values())
 
     if len(candidates) != 1:
         logger.fatal('Snapshot name `{}` not found or ambiguous')
@@ -68,8 +69,13 @@ def main(db, args):
 
     module = sys.modules[__name__]
 
-    cluster = models.Cluster(args['--cluster'])
-    host    = models.Host(cluster)
+    if not args['--cluster']:
+        logger.fatal('No cluster name provided')
+        exit(0)
+
+    znappy = Znappy(db, args['--cluster'])
+
+    host    = znappy.host
 
     for c in ['list', 'restore']:
         if args[c] and hasattr(module, 'action_{}'.format(c)):
