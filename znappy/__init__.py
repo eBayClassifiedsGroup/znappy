@@ -46,9 +46,16 @@ class Znappy(object):
     def load_config(self):
         self.config = self.cluster.config
 
-    def load_drivers(self):
+    def load_drivers(self, extra_handlers = []):
         self.handlers = {}
         drivers = self.config.get('drivers', {})
+
+        for extra_handler in extra_handlers:
+            logger.debug('extra handler: {}'.format(extra_handler))
+            if len(extra_handler) < 2:
+                continue
+
+            self.register(*extra_handler)
 
         for driver in drivers.keys():
             try:
@@ -155,18 +162,18 @@ class Znappy(object):
 
             self.clean_snapshots()
 
-    def monitor(self, *args, **kwargs):
+    def monitor(self, extra_handlers = [], *args, **kwargs):
         self.snapshot = models.Snapshot(self.host)
-        self.load_drivers()
+        self.load_drivers(extra_handlers = extra_handlers)
 
         try:
             self.execute_event(['monitor'], *args, **kwargs)
         except ZnappyEventException, e:
-            return e.code, e.message
-#        except Exception:
-#            return 3, "UNKNOWN: Failed to execute events"
+            return e.message
+        except Exception:
+            return (3, "UNKNOWN: Failed to execute events")
 
-        return 0, "OK: All checks are green!"
+        return (0, "OK: All checks are green!")
 
     def stop(self, sig, frame):
         self.running = False
