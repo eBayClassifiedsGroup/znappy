@@ -92,10 +92,12 @@ class MySQL(object):
     def start(self):
         self.start_mysql(self)
 
-    def start_snapshot(self):
+    def check_master(self):
         if self.i_am_master():
-            logger.info("Host is a master, no snapshots will be created")
-            return False, ""
+            return False, "Host is a master, no snapshots will be created"
+        return True, ""
+
+    def start_snapshot(self):
         return self.lock_mysql()
 
     def monitor(self):
@@ -113,6 +115,7 @@ def load_handlers(config, keystore, register):
 
     mysql = MySQL(config)
     # agent
+    register("pre_snapshot", mysql.check_master)
     register("start_snapshot", mysql.start_snapshot)
     register("end_snapshot", mysql.end_snapshot)
     register("post_snapshot", mysql.close)

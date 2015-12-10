@@ -114,7 +114,7 @@ class Znappy(object):
             result, message = self.execute_handler(handler, *args, **kwargs)
 
             if not result:
-                logger.critical("Failed to execute handler: handlers={0}, message={1}".format(handler, message))
+                logger.info("Failed to execute handler: handlers={0}, message={1}".format(handler, message))
                 raise ZnappyEventException(code=result, message=message)
 
     def execute_handler(self, handler, *args, **kwargs):
@@ -143,6 +143,9 @@ class Znappy(object):
                 self.execute_event(['start_snapshot'])
                 self.execute_event(['create_snapshot'])
                 self.execute_event(['save_snapshot'])
+            except ZnappyEventException, e:
+                if e.message != "Host is a master, no snapshots will be created":
+                    raise e
             except Exception, e:
                 logger.warn(e)
             finally:

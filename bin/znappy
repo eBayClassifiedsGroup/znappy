@@ -32,7 +32,10 @@ logger.setLevel(logging.DEBUG)
 if __name__ == "__main__":
     args = local_config(docopt(__doc__, options_first=True))
 
-    logger.debug(args)
+    logging.getLogger().setLevel(args['--log-level'])
+
+    if args['--debug']:
+        logging.getLogger().setLevel(logging.DEBUG)
 
     if args['<command>'] == "help":
         # we need this because help requires an argument but is not a real package
@@ -47,8 +50,6 @@ if __name__ == "__main__":
 
     db = keyvalue.KeyValue(host=args['--host'])
 
-    if args['--debug']:
-        logging.getLogger().setLevel(logging.DEBUG)
 
     try:
         logger.debug('executing command {}'.format(argv[0]))
