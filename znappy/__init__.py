@@ -38,7 +38,7 @@ class Znappy(object):
         self.cluster = models.Cluster(self.clustername)
 
         if not self.db.node in self.cluster.hosts:
-            self.host = models.Host(self.cluster, db.node)
+            self.host = models.Host(self.cluster, self.db.node)
             self.host.save()
         else:
             self.host = self.cluster.hosts[self.db.node]
