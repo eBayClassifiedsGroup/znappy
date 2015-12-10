@@ -39,7 +39,7 @@ setup(
     ],
     data_files=[
         ('/etc/init/', ['etc/init/znappy-daemon.conf']),
-        ('/etc/znappy/', ['etc/znappy/config.json-sample'])
+        ('/etc/znappy/', ['etc/znappy/config.yaml-sample'])
     ]
 )
 
