@@ -20,10 +20,10 @@ class PrioritizedHandler(namedtuple('PrioritizedHandler', ('priority','driver','
 
 
 class ZnappyEventException(Exception):
-    def __init__(self, errno = 0, errstr = '', *args):
+    def __init__(self, code = 0, message = '', *args):
         super.__init__(self, *args)
-        self.errno = errno
-        self.errstr = errstr
+        self.code= code
+        self.message = message
 
 
 class Znappy(object):
