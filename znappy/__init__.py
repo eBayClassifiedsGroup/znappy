@@ -57,9 +57,11 @@ class Znappy(object):
                 # TODO I wanna get rid of this parameter so I don't need
                 # reload all the drivers on each run
                 pkg.load_handlers(drivers[driver], self.snapshot, register=self.register)
-            except (ImportError, Exception), e:
+            except ImportError, e:
                 raise e
                 logger.warn("Failed to load driver: {}.. skipping".format(e.message))
+            except AttributeError, e:
+                logger.warn("Driver {} has no attribute {}".format(driver, 'load_handlers'))
 
     def check_update(self):
         snapshots = self.host.snapshots.values()
