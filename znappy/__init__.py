@@ -22,7 +22,7 @@ class PrioritizedHandler(namedtuple('PrioritizedHandler', ('priority','driver','
 class ZnappyEventException(Exception):
     def __init__(self, code = 0, message = '', *args):
         super.__init__(self, *args)
-        self.code= code
+        self.code = code
         self.message = message
 
 
