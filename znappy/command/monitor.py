@@ -13,8 +13,7 @@ logger = logging.getLogger(__name__)
 znappy = None
 
 def nexit(code, msg):
-    if msg:
-        logger.info(msg)
+    print msg
 
     exit(code)
 
@@ -46,7 +45,6 @@ def snapshot_count():
     return True, (0, "OK: snapshot count is ok")
 
 def main(db, args):
-    global znappy
     if not args['--cluster']:
         logger.fatal('No cluster name provided')
         # exit 0 so upstart will not try to respawn the process
@@ -54,7 +52,7 @@ def main(db, args):
 
     znappy = Znappy(db, args['--cluster'])
 
-    result = znappy.monitor(extra_handlers=[('monitor',snapshot_age, 100), ('monitor',snapshot_count, 101)])
+    result = znappy.monitor()
 
     logger.debug(result)
 
