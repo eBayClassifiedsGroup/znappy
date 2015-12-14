@@ -63,7 +63,7 @@ class Host(Model):
         self.snapshots = self._load_children("{}/snapshots/", Snapshot)
 
     def save(self):
-        db.put('{}/'.format(self.path()), None)
+        db.put('{}/snapshots/'.format(self.path()), None)
 
         # add it to the cluster, to prevent reloading
         self.cluster.hosts[self.name] = self
@@ -84,9 +84,13 @@ class Snapshot(Model):
             self.driver, self.target, self.time = self._load()
 
     def _load(self):
-        data = json.loads(db.get(self.path())[1]['Value'] or "{}")
+        index, data = db.get(self.path())
 
-        return map(data.get, ['driver', 'target', 'time'])
+        if data:
+            snapshot = json.loads(data['Value'])
+            return map(snapshot.get, ['driver', 'target', 'time'])
+        else:
+            return {}
 
     def save(self):
         #update host
