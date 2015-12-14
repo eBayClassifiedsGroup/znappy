@@ -47,7 +47,10 @@ if __name__ == "__main__":
     else:
         argv = [args['<command>']] + args['<args>']
 
-    db = keyvalue.KeyValue(host=args['--host'])
+    db = keyvalue.KeyValue(
+        host=args.get('--consul-host', 'localhost'),
+        port=int(args.get('--consul-port', 8500))
+    )
 
 
     try:

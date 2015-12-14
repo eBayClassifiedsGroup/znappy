@@ -23,7 +23,7 @@ def main(db, args):
     if args['--daemon']:
         # bind the signalling event handlers
         # TODO SIGHUP|SIGUSER1 -> reload config
-        signal.signal(signal.SIGINT, znappy.stop)
+        signal.signal(signal.SIGTERM, znappy.stop)
 
         znappy.daemon()
     else:

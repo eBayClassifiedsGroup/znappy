@@ -7,7 +7,7 @@ def read(fname):
 
 setup(
     name="znappy",
-    version="0.1.8",
+    version="0.1.9",
     author="Jorn Wijnands",
     author_email="jwijnands@ebay.com",
     maintainer="Jorn Wijnands",
