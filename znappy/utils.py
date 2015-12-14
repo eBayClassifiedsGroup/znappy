@@ -34,12 +34,10 @@ events = [
 
 def local_config(args = {}):
     try:
-        with open('/etc/znappy/config.yaml') as f:
+        with open('/etc/znappy/client.yaml') as f:
             config = yaml.load(f)
-            args['--cluster'] = config.get('cluster')
-            args['--log-level'] = str.upper(config.get('log-level', 'WARN'))
-            args['--host']    = config.get('consul', {}).get('hostname', 'localhost')
-            args['--port']    = config.get('consul', {}).get('port', 8500)
+            for k in config.keys():
+                args['--{}'.format(k)] = config.get(k, False)
     except Exception, e:
         logger.warn('Failed to load local configuration!')
         exit(1)
