@@ -142,7 +142,6 @@ class Znappy(object):
                 self.execute_event(['pre_snapshot'])
                 self.execute_event(['start_snapshot'])
                 self.execute_event(['create_snapshot'])
-                self.execute_event(['save_snapshot'])
             except ZnappyEventException, e:
                 if e.message != "Host is a master, no snapshots will be created":
                     raise e
@@ -151,6 +150,7 @@ class Znappy(object):
             finally:
                 self.execute_event(['end_snapshot'])
                 self.execute_event(['post_snapshot'])
+                self.execute_event(['save_snapshot'])
                 self.cluster.release()
 
             self.clean_snapshots()

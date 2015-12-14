@@ -1,5 +1,6 @@
 import consul
 import logging
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -9,17 +10,14 @@ class KeyValue(object):
         self._consul = consul.Consul(**kwargs)
         self.node    = None
 
-
     def __enter__(self):
         self.connect()
-
 
     def __exit__(self, type, value, tb):
         self.close()
 
-
     def connect(self):
-        self._session_id = self._consul.session.create(name="znappy-agent", ttl=15, lock_delay=0)
+        self._session_id = self._consul.session.create(name="znappy-agent", ttl=30, lock_delay=0)
 
         logger.debug("Connected to Consul: {}".format(self._session_id))
 
@@ -33,41 +31,31 @@ class KeyValue(object):
 
         return True
 
-
     def close(self):
         try:
             self._consul.session.destroy(self._session_id)
         except:
             pass
 
-
     def ping(self):
-        try:
-            return self._consul.session.renew(self._session_id)
-        except:
-            pass
-
+        while True:
+            try:
+                return self._consul.session.renew(self._session_id)
+            except:
+                time.sleep(1)
 
     def get(self, *args, **kwargs):
         return self._consul.kv.get(*args, **kwargs)
 
-
     def put(self, *args, **kwargs):
-        n     = 0
-        retry = True
-
-        while retry:
+        while True:
             try:
                 return self._consul.kv.put(*args, **kwargs)
             except Exception:
-                if n > 1:
-                    retry = False
-                n+=1
-
+                time.sleep(1)
 
     def delete(self, *args, **kwargs):
         return self._consul.kv.delete(*args, **kwargs)
-
 
     def acquire(self, lock, *args, **kwargs):
         logger.debug("trying to acquire lock {0} for {1}".format(lock, self._session_id))
@@ -75,7 +63,6 @@ class KeyValue(object):
         result = self._consul.kv.put(lock, "", acquire=self._session_id)
         logger.debug(result)
         return result
-
 
     def release(self, lock, *args, **kwargs):
         return self._consul.kv.put(lock, "", release=self._session_id)
