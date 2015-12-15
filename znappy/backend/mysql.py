@@ -2,9 +2,11 @@
 """
 
 from fabric.api import task, local
+from ConfigParser import ConfigParser
 import logging
 import MySQLdb
 import MySQLdb.cursors
+import os
 
 __all__ = ['load_handlers']
 
@@ -14,12 +16,34 @@ logger = logging.getLogger(__name__)
 class MySQL(object):
     def __init__(self, config):
         self.config = config
+        self.mycnf = self.load_mycnf(
+            config.get('mycnf_path', '/etc/mysql/debian.cnf'),
+            config.get('mycnf_section', 'client')
+        )
+
         self.conn = MySQLdb.connect(
             host='localhost',
-            user=config.get('user', 'root'),
-            passwd=config.get('password', None),
+            user=self.mycnf.get('user', 'root'),
+            passwd=self.mycnf.get('password', None),
             cursorclass=MySQLdb.cursors.DictCursor
         )
+
+    def load_mycnf(path, section):
+        mycnf = {}
+
+        try:
+            parser = ConfigParser(allow_no_value=True)
+            parser.read(os.path.expanduser(path))
+
+            # Get the username and password
+            for k in ['user', 'password']:
+                mycnf[k] = parser.get(section, k)
+        except:
+            logger.warn('Tried to read mysql configuration from {} but failed to do so'.format(path))
+            pass
+
+        return mycnf
+
 
     def __del__(self):
         """On dereference try to destroy connection"""
