@@ -93,13 +93,16 @@ class Snapshot(Model):
             return {}
 
     def save(self):
-        #update host
-        return db.put(self.path(), json.dumps({
-            'name':   self.name,
-            'driver': self.driver,
-            'target': self.target,
-            'time':   self.time,
-        }))
+        if self.name:
+            #update snapshot
+            return db.put(self.path(), json.dumps({
+                'name':   self.name,
+                'driver': self.driver,
+                'target': self.target,
+                'time':   self.time,
+            }))
+        else:
+            return True
 
     def delete(self):
         return db.delete(self.path())
