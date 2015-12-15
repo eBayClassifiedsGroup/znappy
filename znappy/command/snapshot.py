@@ -64,6 +64,14 @@ def action_restore(config, args, snapshots):
         utils.execute_event(['post_restore'])
 
 
+def action_delete(config, args, snapshots):
+    drivers = config.get('drivers', [])
+    
+    for driver in drivers:
+        driver_snapshots = filter(lambda s: s.driver == driver, snapshots.values())
+    pass
+
+
 def main(db, args):
     logger.debug("Using arguments: {0}".format(args))
 
@@ -77,7 +85,7 @@ def main(db, args):
 
     host    = znappy.host
 
-    for c in ['list', 'restore']:
+    for c in ['list', 'restore', 'delete']:
         if args[c] and hasattr(module, 'action_{}'.format(c)):
             command = getattr(module, 'action_{}'.format(c))
-            command(cluster.config, args, host.snapshots)
+            command(znappy.config, args, host.snapshots)

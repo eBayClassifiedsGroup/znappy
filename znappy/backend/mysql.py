@@ -28,7 +28,7 @@ class MySQL(object):
             cursorclass=MySQLdb.cursors.DictCursor
         )
 
-    def load_mycnf(path, section):
+    def load_mycnf(self, path, section):
         mycnf = {}
 
         try:
