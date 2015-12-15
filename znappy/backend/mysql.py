@@ -126,9 +126,9 @@ class MySQL(object):
 
     def monitor(self, *args, **kwargs):
         if self.i_am_master():
-            return False, "OK: Host is a MySQL master"
+            return False, (0, "OK: Host is a MySQL master")
         else:
-            return True, "OK: Host is a MySQL slave"
+            return True, (0, "OK: Host is a MySQL slave")
 
     def end_snapshot(self):
         return self.unlock_mysql()

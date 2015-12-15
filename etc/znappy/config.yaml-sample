@@ -1,6 +1,0 @@
----
-cluster: dbads
-log-level: debug
-consul:
-  hostname: localhost
-  port: 8500
