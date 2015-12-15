@@ -16,7 +16,7 @@ Commands:
 
 """
 
-from znappy import utils, models
+from znappy import utils, models, Znappy
 from prettytable import PrettyTable
 
 import sys
