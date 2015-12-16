@@ -38,6 +38,14 @@ class ZFSSnapshot(object):
         if local('/sbin/zfs destroy {}'.format(target)).return_code != 0:
             raise SnapshotException('Failed to destroy snapshot')
 
+    @task
+    def zfs_snapshot_list(self):
+        result = local('/sbin/zfs get -H -o value name -t snapshot', capture=True)
+
+        if result.return_code != 0:
+            raise SnapshotException('Failed to list snapshots')
+
+        return result.split('\n')
 
     def _config_fabric(self):
         env.host_string = 'localhost'
@@ -131,6 +139,24 @@ class ZFSSnapshot(object):
 
         return True, ''
 
+    def check_snapshot_sync(self, znappy, *args, **kwargs):
+        local_snapshots = self.zfs_snapshot_list(self)
+
+        local_snapshots = set(x.split('@',2)[1] for x in local_snapshots)
+        consul_snapshots = set(znappy.host.snapshots.keys())
+
+        logger.debug(local_snapshots)
+        logger.debug(consul_snapshots)
+
+        diff = local_snapshots^consul_snapshots
+
+        if len(diff) == 0:
+            return True, (0, "OK: No differences in consul and local system")
+        elif len(diff) == 1:
+            return False, (1, "WARN: {} difference between consul and local system: {}".format(len(diff), ', '.join(diff)))
+        else:
+            return False, (2, "CRITICAL: {} differences between consul and local system: {}".format(len(diff), ', '.join(diff)))
+
 
 class SnapshotException(Exception):
     pass
@@ -145,6 +171,9 @@ def load_handlers(config, snapshot, register=register_handler):
     register("create_snapshot", instance.create)
     register("save_snapshot", instance.save)
     register("delete_snapshot", instance.cleanup)
+
+    # handlers for monitoring
+    register("monitor", instance.check_snapshot_sync)
 
     # handlers for restoring a snapshot
     register("start_restore", instance.start_restore, priority=sys.maxint)   # some high number, want to do this as last
