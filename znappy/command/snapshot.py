@@ -66,7 +66,7 @@ def action_restore(config, args, snapshots):
 
 def action_delete(config, args, snapshots):
     drivers = config.get('drivers', [])
-    
+
     for driver in drivers:
         driver_snapshots = filter(lambda s: s.driver == driver, snapshots.values())
     pass

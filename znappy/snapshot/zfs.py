@@ -75,14 +75,9 @@ class ZFSSnapshot(object):
 
 
     def cleanup(self, snapshots, *args, **kwargs):
-        """Snapshots are sorted new -> old by default
         """
-
-        if len(snapshots) <= self.rotate:
-            return True, 'No snapshots need to be deleted'
-
-        snapshots = snapshots[(self.rotate-1):]
-
+        Snapshots filled with snapshots older than now() - rotate * min_age
+        """
         for s in snapshots:
             try:
                 logger.debug("Deleting snapshot: {}".format(s.name))

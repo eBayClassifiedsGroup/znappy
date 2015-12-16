@@ -79,11 +79,12 @@ class Znappy(object):
         snapshots = self.host.snapshots.values()
         logger.debug('cleaning old snapshots')
         logger.debug(drivers)
+        rotate = self.config.get('snapshot').get('rotate')
+        min_age = self.config.get('snapshot').get('min_age')
+        time_offset = int(time.time()) - rotate * min_age
 
         for driver in drivers:
-            driver_snapshots = filter(lambda s: s.driver == driver, snapshots)
-            logger.debug(driver_snapshots)
-            driver_snapshots = sorted(driver_snapshots, key=lambda s: s.time, reverse=True)
+            driver_snapshots = filter(lambda s: s.driver == driver and s.time < time_offset, snapshots)
             logger.debug(driver_snapshots)
 
             self.execute_event(['delete_snapshot'], driver, driver_snapshots)
