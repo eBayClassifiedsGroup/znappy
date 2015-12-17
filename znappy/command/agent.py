@@ -13,11 +13,6 @@ import signal
 logger = logging.getLogger(__name__)
 
 def main(db, args):
-    if not args['--cluster']:
-        logger.fatal('No cluster name provided')
-        # exit 0 so upstart will not try to respawn the process
-        exit(0)
-
     znappy = Znappy(db, args['--cluster'])
 
     if args['--daemon']:

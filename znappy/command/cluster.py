@@ -9,7 +9,6 @@ Options:
 """
 
 from znappy import Znappy
-import logging
 import time
 import sys
 import getpass
@@ -17,9 +16,6 @@ from datetime import datetime, timedelta
 from prettytable import PrettyTable
 from fabric.api import env, sudo, task
 from fabric.colors import green, red
-
-
-logger = logging.getLogger(__name__)
 
 env.warn_only = True
 
@@ -102,15 +98,12 @@ def action_restore(cluster, t):
 
 
 def main(db, args):
-    if not args['--cluster']:
-        logger.fatal('No cluster name provided')
-    module  = sys.modules[__name__]
-
+    module= sys.modules[__name__]
     znappy = Znappy(db, args['--cluster'])
 
     time_before = datetime.today() - timedelta(minutes=int(args['--minute']))
     time_before = int(time.mktime(time_before.timetuple()))
-    result  = ""
+    result  = "Action not found!"
 
     for c in ['list', 'restore']:
         funcname = 'action_{}'.format(c)
