@@ -145,7 +145,7 @@ def load_handlers(config, keystore, register):
 
     mysql = MySQL(config)
     # agent
-    register("pre_snapshots", mysql.connect)
+    register("pre_snapshot", mysql.connect)
     register("pre_snapshot", mysql.check_master, priority=1)
     register("start_snapshot", mysql.start_snapshot)
     register("end_snapshot", mysql.end_snapshot)
