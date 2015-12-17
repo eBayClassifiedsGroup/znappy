@@ -10,9 +10,9 @@ Options:
 Commands:
     agent        Run the snapshot agent
     snapshot     Snapshot management
-    bootstrap    Bootstrap a cluster
-    restore      Restore a snapshot on this machine
+    config       Manage cluster configuration
     cluster      Cluster orchestration utils
+    monitor      Monitor znappy health
 
 See 'znappy <command> --help' for more information on a specific command
 """
@@ -20,7 +20,7 @@ See 'znappy <command> --help' for more information on a specific command
 from znappy import keyvalue, models
 from znappy.utils import local_config
 from docopt import docopt
-import logging, logging.handlers
+import logging
 import importlib
 
 logging.basicConfig(format="%(asctime)s [%(name)-24.24s] [%(funcName)-16.16s] [%(levelname)-8.8s] %(message)s")
@@ -35,6 +35,11 @@ if __name__ == "__main__":
 
     if args['--debug']:
         logging.getLogger().setLevel(logging.DEBUG)
+
+    # Don't even try to do anything if we don't have a cluster name
+    if not args['--cluster']:
+        logger.critical('No cluster name provided!')
+        exit(1)
 
     if args['<command>'] == "help":
         # we need this because help requires an argument but is not a real package
@@ -52,7 +57,6 @@ if __name__ == "__main__":
         port=int(args.get('--consul-port', 8500))
     )
 
-
     try:
         logger.debug('executing command {}'.format(argv[0]))
         command = importlib.import_module('znappy.command.{}'.format(argv[0]))
@@ -63,7 +67,7 @@ if __name__ == "__main__":
         logger.fatal(e)
         exit(127)
     except Exception, e:
-        logger.debug(e)
+        logger.warn(e)
         exit(255)
 
     with db:
