@@ -10,20 +10,63 @@ logger = logging.getLogger(__name__)
 
 class ZFSSnapshot(object):
     @task
-    def zfs_snapshot_clone(self, clone_name):
-        logger.debug('Cloning {filesystem}@{time} into {}'.format(clone_name, **dict(self)))
+    def zfs_get_properties(self):
+        if self.properties:
+            properties = ','.join(self.properties)
+            cmd = '/sbin/zfs get -H -o properties,value {} {filesystem}'.format(properties, **self.snapshot)
 
-        if local('/sbin/zfs clone {filesystem}@{time} {}'.format(clone_name, **dict(self))).return_code != 0:
+            logger('Getting properties from {}'.format(self.snapshot.filesystem))
+            logger('Executing {}'.format(cmd))
+
+            result = local(cmd, capture=True)
+
+            if result.return_code != 0:
+                raise SnapshotException('Failed to get filesystem properties')
+
+            props = {k.split()[0]: k.split()[1] for k in result.splitlines()}
+            return props
+
+        return {}
+
+    @task
+    def zfs_unmount(self, target):
+        cmd = '/sbin/zfs unmount {}'.format(target)
+
+        logger.debug('Unmounting {}'.format(target))
+        logger.debug('Executing: {}'.format(cmd))
+
+        if local(cmd).return_code != 0:
+            raise SnapshotException('Failed to unmount filesystem')
+
+    @task
+    def zfs_snapshot_clone(self, clone_name, properties):
+        prop_list = ' '.join(map(lambda p: "-o {}={}".format(p, properties[p]), properties))
+
+        cmd = '/sbin/zfs clone {} {filesystem}@{name} {}'.format(prop_list, clone_name, **self.snapshot)
+        logger.debug('Cloning {filesystem}@{name} into {}'.format(clone_name, **self.snapshot))
+        logger.debug('Executing: {}'.format(cmd))
+
+        if local(cmd).return_code != 0:
             raise SnapshotException('Failed to clone snapshot')
-
 
     @task
     def zfs_snapshot_promote(self, clone_name):
-        logger.debug('Promoting {}'.format(clone_name))
+        cmd = '/sbin/zfs promote {}'.format(clone_name)
 
-        if local('/sbin/zfs promote {}'.format(clone_name)).return_code != 0:
+        logger.debug('Promoting {}'.format(clone_name))
+        logger.debug('Executing: {}'.format(cmd))
+
+        if local(cmd).return_code != 0:
             raise SnapshotException('Failed to promote snapshot')
 
+    @task
+    def zfs_snapshot_rename(self, clone_name):
+        cmd = '/sbin/zfs rename {} {filesystem}'.format(clone_name, **dict(self))
+        logger.debug('Renaming {} to {filesystem}'.format(clone_name, **dict(self)))
+        logger.debug('Executing: {}'.format(cmd))
+
+        if local(cmd).return_code != 0:
+            raise SnapshotException('Failed to clone snapshot')
 
     @task
     def zfs_snapshot_create(self):
@@ -32,10 +75,9 @@ class ZFSSnapshot(object):
 
         return local('/sbin/zfs snap {filesystem}@{name}'.format(**self.__dict__))
 
-
     @task
     def zfs_snapshot_destroy(self, target):
-        if local('/sbin/zfs destroy {}'.format(target)).return_code != 0:
+        if local('/sbin/zfs destroy -r {}'.format(target)).return_code != 0:
             raise SnapshotException('Failed to destroy snapshot')
 
     @task
@@ -51,9 +93,8 @@ class ZFSSnapshot(object):
         env.host_string = 'localhost'
         env.warn_only   = True
 
-        for c in ['running', 'stderr', 'status', 'warning']:
+        for c in output.keys():
             output[c] = False
-
 
     def __init__(self, snapshot, config):
         logger.debug("init zfssnapshot with config: {}".format(config))
@@ -62,9 +103,9 @@ class ZFSSnapshot(object):
         self.snapshot   = snapshot
         self.filesystem = config['filesystem']
         self.rotate     = config.get('rotate', 12)
+        self.properties = config.get('properties', [])
 
         self._config_fabric()
-
 
     def create(self, *args, **kwargs):
         logger.debug('creating snapshot')
@@ -80,7 +121,6 @@ class ZFSSnapshot(object):
             logger.fatal('Snapshot failed :(')
 
         return result.return_code == 0, ''
-
 
     def cleanup(self, snapshots, *args, **kwargs):
         """
@@ -99,10 +139,8 @@ class ZFSSnapshot(object):
 
         return True, 'cleanup complete'
 
-
     def save(self, *args, **kwargs):
         return self.snapshot.save(), 'zfssnapshot_save'
-
 
     def start_restore(self, snapshot, *args, **kwargs):
         cmd = local("fuser -k -9 -m /$(zfs get -H -o value mountpoint {})".format(snapshot.target))
@@ -116,21 +154,22 @@ class ZFSSnapshot(object):
 
         clone_name = "{0}_clone-{1}".format(self.filesystem, int(time.time()))
 
+        properties = zfs_get_properties(self)
+
         logger.debug(clone_name)
 
         # TODO check if there are any other open filehandles to the mountpoint, otherwise this sequence will FAIL
         try:
-            #self.zfs_snapshot_clone(self, clone_name)
-
-            #self.zfs_snapshot_promote(self, clone_name)
-
-            #self.zfs_snapshot_destroy(self, self.name)
-
-            #self.zfs_snapshot_rename(self, clone_name)
-            pass
+            self.zfs_unmount(self, self.filesystem)
+            self.zfs_snapshot_clone(self, clone_name, properties)
+            self.zfs_snapshot_promote(self, clone_name)
+            self.zfs_snapshot_destroy(self, self.filesystem)
+            # set mountpoint
+            self.zfs_snapshot_rename(self, clone_name)
         except SnapshotException, e:
             # TODO fix this with rollback and checks
             logger.fatal(e)
+            return False, 'Failed to execute zfs::restore'
 
         return True, ''
 

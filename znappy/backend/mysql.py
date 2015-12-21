@@ -1,7 +1,7 @@
 """ Package for managing MySQL Backend
 """
 
-from fabric.api import task, local
+from fabric.api import task, local, settings, hide
 from ConfigParser import ConfigParser
 import logging
 import MySQLdb
@@ -65,11 +65,17 @@ class MySQL(object):
 
     @task
     def stop_mysql(self):
-        return local('service mysql stop').return_code == 0, ""
+        with settings(hide('running', 'stdout')):
+            result = local('service mysql stop')
+
+        return result.return_code == 0, "stop_mysql"
 
     @task
     def start_mysql(self):
-        return local('service mysql start').return_code == 0, ""
+        with settings(hide('running', 'stdout')):
+            result = local('service mysql start')
+
+        return result.return_code == 0, "start_mysql"
 
     def i_am_master(self):
         read_only = self.query('SHOW GLOBAL VARIABLES LIKE "read_only"')[0]['Value']
