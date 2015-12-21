@@ -25,7 +25,7 @@ def snapshot_age(znappy, *args, **kwargs):
 
 def snapshot_count(znappy, *args, **kwargs):
     count = len(znappy.host.snapshots)
-    rotate =  znappy.config.get("snapshot", {}).get("rotate", 12)
+    rotate = znappy.config.get("snapshot", {}).get("rotate", 12)
 
     if count < rotate:
         return False, (1, "WARNING: snapshot count is lower than the rotation ({}/{})".format(count, rotate))

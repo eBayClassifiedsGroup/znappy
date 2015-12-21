@@ -60,4 +60,4 @@ def main(db, args):
 
         if args[command] and hasattr(module, funcname):
             action = getattr(module, funcname)
-            result = action(znappy, db, args)
+            action(znappy, db, args)
