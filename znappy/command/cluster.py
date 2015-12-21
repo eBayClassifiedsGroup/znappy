@@ -70,8 +70,8 @@ def action_restore(znappy, t):
     if choice != 'y':
         return "Aborted!"
 
-    env.user      = raw_input('[ldap] username: ')
-    env.password  = getpass.getpass('[sudo] password for {}: '.format(env.user))
+    env.user     = raw_input('[ldap] username: ')
+    env.password = getpass.getpass('[sudo] password for {}: '.format(env.user))
 
     if not tsudo('localhost', '/bin/true'):
         return 'Failed to verify credentials'
@@ -91,7 +91,7 @@ def action_restore(znappy, t):
     # ye it should be that easy
     except Exception, e:
         print e.message
-        return "Failed to restore cluster! :S"
+        return "Failed to restore cluster!"
 
     znappy.cluster.release()
 
