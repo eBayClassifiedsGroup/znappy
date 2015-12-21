@@ -21,7 +21,6 @@ class MySQL(object):
             config.get('mycnf_section', 'client')
         )
 
-
     def connect(self, *args, **kwargs):
         try:
             self.conn = MySQLdb.connect(
@@ -50,7 +49,6 @@ class MySQL(object):
 
         return mycnf
 
-
     def __del__(self):
         """On dereference try to destroy connection"""
         try:
@@ -73,9 +71,7 @@ class MySQL(object):
     @task
     def start_mysql(self):
         with settings(hide('running', 'stdout')):
-            result = local('service mysql start')
-
-        return result.return_code == 0, "start_mysql"
+            return local('service mysql start --skip-slave-start').return_code == 0, ""
 
     def i_am_master(self):
         read_only = self.query('SHOW GLOBAL VARIABLES LIKE "read_only"')[0]['Value']
@@ -145,6 +141,16 @@ class MySQL(object):
     def end_snapshot(self):
         return self.unlock_mysql()
 
+    def failover(self, *args, **kwargs):
+        cred_file = self.config.get('failover_creds', '/etc/mysql/failover.cnf')
+        master = kwargs.get('master_host')
+        if not master:
+            return False, "No master_host given"
+
+        with settings(hide('running')):
+            return local("/usr/bin/mysqlmaster.py switch --new-master {} --defaults-extra-file={} "
+                         "--dead-master --assume-yes".format(master, cred_file)).return_code == 0, ""
+
 
 def load_handlers(config, keystore, register):
     logger.debug('called with config: {}'.format(config))
@@ -158,8 +164,10 @@ def load_handlers(config, keystore, register):
     register("post_snapshot", mysql.close)
 
     # restore
+    # register("pre_cluster_restore", mysql.methodname)
     register("start_restore", mysql.stop)
     register("end_restore", mysql.start)
+    register("post_cluster_restore", mysql.failover)
 
     # Monitor
     register("monitor", mysql.monitor)
