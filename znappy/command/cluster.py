@@ -1,18 +1,17 @@
 """
-Usage:
-    znappy cluster list [options]
-    znappy cluster restore [options]
-    znappy cluster --help
+List or restore cluster wide snapshots. Prompts for a timestring
+to find closest match snapshots.
 
-Options:
-    --minute=<m>        Minutes ago to search for [default: 15]
+Usage:
+    znappy cluster list
+    znappy cluster restore
 """
 
 from znappy import Znappy
 import time
 import sys
 import getpass
-from datetime import datetime, timedelta
+from datetime import datetime
 from prettytable import PrettyTable
 from fabric.api import env, sudo, task
 
@@ -28,10 +27,20 @@ def tsudo(target, cmd):
 def list_snapshots(cluster, t):
     snapshots = {}
 
+    def sort_by_time(s):
+        return sorted(s, key=lambda s: s.time)
+
     for h in cluster.hosts:
-        snapshots_before_time = filter(lambda s: s.time < (t - 3), cluster.hosts[h].snapshots)
+        host_snapshots = cluster.hosts[h].snapshots.values()
+        if not host_snapshots:
+            continue
+        snapshots_before_time = filter(lambda s: s.time < (t - 3), host_snapshots)
         if snapshots_before_time:
-            snapshot = sorted(snapshots_before_time, key=lambda s: s.time, reverse=True)[0]
+            # Grab the closest snapshot older than specified time
+            snapshot = sort_by_time(snapshots_before_time)[-1]
+        else:
+            # No snapshot older than specified time so grab the oldest
+            snapshot = sort_by_time(host_snapshots)[0]
 
         snapshots[h] = snapshot
 
@@ -41,10 +50,11 @@ def list_snapshots(cluster, t):
 def snapshot_table(snapshots, t=int(time.time())):
     table = PrettyTable(fields=['host', 'snapshot', 'time', 'lag'])
     for host in snapshots:
-        snapshot = snapshots[host]
-        lag      = int(t - snapshot.time)
+        snapshot  = snapshots[host]
+        lag       = abs(int(t - snapshot.time))
+        timestamp = datetime.fromtimestamp(int(snapshot.time)).strftime('%Y-%m-%d %H:%M:%S')
 
-        table.add_row([host, snapshot.name, snapshot.time, lag])
+        table.add_row([host, snapshot.name, timestamp, lag])
 
     return table
 
@@ -98,12 +108,24 @@ def action_restore(znappy, t):
     return "cluster restore complete"
 
 
+def get_user_time():
+    while True:
+        try:
+            time_input = raw_input('[YYYY-MM-DD HH:mm:ss]: ')
+            parse_time = datetime.strptime(time_input, "%Y-%m-%d %H:%M:%S").timetuple()
+            return int(time.mktime(parse_time))
+        except Exception:
+            print("Invalid time format given..")
+            continue
+
+
 def main(db, args):
     module = sys.modules[__name__]
     znappy = Znappy(db, args['--cluster'])
 
-    time_before = datetime.today() - timedelta(minutes=int(args['--minute']))
-    time_before = int(time.mktime(time_before.timetuple()))
+    print("Specify a point in time to look for closest matching snapshots, e.g. 2016-01-31 11:55:55")
+    time_before = get_user_time()
+
     result      = "Action not found!"
 
     for c in ['list', 'restore']:
