@@ -60,7 +60,7 @@ def action_restore(znappy, args):
 
 def action_delete(znappy, args):
     try:
-        znappy.snapshot = znappy.host.snasphots[args['<name>']]
+        znappy.snapshot = znappy.host.snapshots[args['<name>']]
     except KeyError:
         print "Snapshot not found on this host"
         exit(1)
