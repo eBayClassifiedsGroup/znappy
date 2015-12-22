@@ -4,7 +4,6 @@ from znappy import models
 
 import importlib
 import inspect
-import json
 import logging
 import time
 
@@ -14,13 +13,13 @@ __all__ = ['Znappy', 'ZnappyEventException']
 logger = logging.getLogger(__name__)
 
 
-class PrioritizedHandler(namedtuple('PrioritizedHandler', ('priority','driver','callback'))):
+class PrioritizedHandler(namedtuple('PrioritizedHandler', ('priority', 'driver', 'callback'))):
     def __lt__(self, other):
         return self.priority < other.priority
 
 
 class ZnappyEventException(Exception):
-    def __init__(self, code = 0, message = '', *args):
+    def __init__(self, code=0, message='', *args):
         super(ZnappyEventException, self).__init__(*args)
         self.code = code
         self.message = message
@@ -31,13 +30,16 @@ class Znappy(object):
         self.db = db
         self.clustername = cluster
 
-        self.load_cluster()
-        self.load_config()
+        try:
+            self.load_cluster()
+            self.load_config()
+        except ValueError:
+            logger.fatal("unable to load cluster, consul down?")
 
     def load_cluster(self):
         self.cluster = models.Cluster(self.clustername)
 
-        if not self.db.node in self.cluster.hosts:
+        if self.db.node not in self.cluster.hosts:
             self.host = models.Host(self.cluster, self.db.node)
             self.host.save()
         else:
@@ -91,14 +93,14 @@ class Znappy(object):
 
     def register(self, event, handler, priority=0):
         caller = inspect.getmodule(inspect.stack()[1][0]).__name__
-        logger.debug("caller: {0}, event: {1}, priority {2}, handler={3}".format(caller,event,priority, handler))
+        logger.debug("caller: {0}, event: {1}, priority {2}, handler={3}".format(caller, event, priority, handler))
 
         handler = PrioritizedHandler(priority, caller, handler)
 
         event_handlers = self.handlers.setdefault(event, [])
         insort(event_handlers, handler)
 
-    def execute_event(self, events, driver = None, *args, **kwargs):
+    def execute_event(self, events, driver=None, *args, **kwargs):
         matching_handlers = []
 
         for e in list(events) + ["all"]:
@@ -135,7 +137,7 @@ class Znappy(object):
 
             time.sleep(10)
 
-    def run(self, force = False):
+    def run(self, force=False):
         if (self.check_update() and self.cluster.lock()) or force:
             self.snapshot = models.Snapshot(self.host)
             self.load_drivers()
