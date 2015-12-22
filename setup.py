@@ -1,13 +1,14 @@
 import os
 from setuptools import setup, find_packages
 
+
 def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
 
 setup(
     name="znappy",
-    version="0.1.10",
+    version="0.1.11",
     author="Jorn Wijnands",
     author_email="jwijnands@ebay.com",
     maintainer="Jorn Wijnands",
@@ -41,4 +42,3 @@ setup(
         ('/etc/init/', ['etc/init/znappy-daemon.conf'])
     ]
 )
-
