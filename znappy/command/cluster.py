@@ -72,7 +72,8 @@ def action_restore(znappy, t):
 
     print snapshot_table(snapshots, t).get_string(sortby='host')
 
-    master = sorted(snapshots.values(), key=lambda s: s.time, reverse=True)[0].host
+    # Sort by smallest amount of (absolute) "lag" to get closest snapshot
+    master = sorted(snapshots.values(), key=lambda s: abs(int(t - s.time)))[0].host
 
     print "Master host will be: {}".format(master.name)
 
