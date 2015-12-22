@@ -53,6 +53,8 @@ def snapshot_table(snapshots, t=int(time.time())):
         snapshot  = snapshots[host]
         lag       = abs(int(t - snapshot.time))
         timestamp = datetime.fromtimestamp(int(snapshot.time)).strftime('%Y-%m-%d %H:%M:%S')
+        if snapshot.time > t:
+            lag = '+ ' + str(lag)
 
         table.add_row([host, snapshot.name, timestamp, lag])
 
