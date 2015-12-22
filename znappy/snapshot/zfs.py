@@ -71,7 +71,7 @@ class ZFSSnapshot(object):
     @task
     def zfs_snapshot_create(self):
         self.time = int(time.time())
-        self.name = "{driver}-{filesystem}-{time}".format(**self.__dict__).replace('/','.')
+        self.name = "{driver}-{filesystem}-{time}".format(**self.__dict__).replace('/', '.')
 
         return local('/sbin/zfs snap {filesystem}@{name}'.format(**self.__dict__))
 
@@ -102,7 +102,6 @@ class ZFSSnapshot(object):
         self.driver     = __name__
         self.snapshot   = snapshot
         self.filesystem = config['filesystem']
-        self.rotate     = config.get('rotate', 12)
         self.properties = config.get('properties', [])
 
         self._config_fabric()
@@ -130,7 +129,7 @@ class ZFSSnapshot(object):
             try:
                 logger.debug("Deleting snapshot: {}".format(s.name))
                 self.zfs_snapshot_destroy(self, "{0}@{1}".format(s.target, s.name))
-            except SnapshotException, e:
+            except SnapshotException:
                 # It may be that the snapshot is still in the keystore, but not
                 # on the filesystem/zfs, ignore these errors for now
                 pass
@@ -146,7 +145,7 @@ class ZFSSnapshot(object):
         cmd = local("fuser -k -9 -m /$(zfs get -H -o value mountpoint {})".format(snapshot.target))
 
         logger.debug(cmd)
-        
+
         return True, ''
 
     def restore(self, *args, **kwargs):
@@ -154,7 +153,7 @@ class ZFSSnapshot(object):
 
         clone_name = "{0}_clone-{1}".format(self.filesystem, int(time.time()))
 
-        properties = zfs_get_properties(self)
+        properties = self.zfs_get_properties(self)
 
         logger.debug(clone_name)
 
@@ -176,13 +175,13 @@ class ZFSSnapshot(object):
     def check_snapshot_sync(self, znappy, *args, **kwargs):
         local_snapshots = self.zfs_snapshot_list(self)
 
-        local_snapshots = set(x.split('@',2)[1] for x in local_snapshots)
+        local_snapshots = set(x.split('@', 2)[1] for x in local_snapshots)
         consul_snapshots = set(znappy.host.snapshots.keys())
 
         logger.debug(local_snapshots)
         logger.debug(consul_snapshots)
 
-        diff = local_snapshots^consul_snapshots
+        diff = local_snapshots ^ consul_snapshots
 
         if len(diff) == 0:
             return True, (0, "OK: No differences in consul and local system")
@@ -200,7 +199,7 @@ def load_handlers(config, snapshot, register=register_handler):
     logger.debug('called with config: {}'.format(config))
 
     instance = ZFSSnapshot(snapshot, config=config)
-    
+
     # handlers for creating a snapshot
     register("create_snapshot", instance.create)
     register("save_snapshot", instance.save)
