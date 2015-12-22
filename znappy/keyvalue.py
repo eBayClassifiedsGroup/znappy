@@ -6,8 +6,9 @@ logger = logging.getLogger(__name__)
 
 
 class KeyValue(object):
-    def __init__(self, **kwargs):
+    def __init__(self, dc = None, **kwargs):
         self._consul = consul.Consul(**kwargs)
+        self.dc      = None
         self.node    = None
 
     def __enter__(self):
@@ -26,8 +27,14 @@ class KeyValue(object):
             info = self._consul.session.info(self._session_id)
             logger.debug(info)
             self.node = info[1]['Node']
-        except Exception, e:
+        except Exception:
             return False
+
+        if not self.dc:
+            try:
+                self.dc = self._consul.agent.self()['Config']['Datacenter']
+            except Exception:
+                return False
 
         return True
 
@@ -45,24 +52,24 @@ class KeyValue(object):
                 time.sleep(1)
 
     def get(self, *args, **kwargs):
-        return self._consul.kv.get(*args, **kwargs)
+        return self._consul.kv.get(*args, dc=self.dc, **kwargs)
 
     def put(self, *args, **kwargs):
         while True:
             try:
-                return self._consul.kv.put(*args, **kwargs)
+                return self._consul.kv.put(*args, dc=self.dc, **kwargs)
             except Exception:
                 time.sleep(1)
 
     def delete(self, *args, **kwargs):
-        return self._consul.kv.delete(*args, **kwargs)
+        return self._consul.kv.delete(*args, dc=self.dc, **kwargs)
 
     def acquire(self, lock, *args, **kwargs):
         logger.debug("trying to acquire lock {0} for {1}".format(lock, self._session_id))
         # TODO implement semaphore
-        result = self._consul.kv.put(lock, "", acquire=self._session_id)
+        result = self._consul.kv.put(lock, "", acquire=self._session_id, dc=self.dc)
         logger.debug(result)
         return result
 
     def release(self, lock, *args, **kwargs):
-        return self._consul.kv.put(lock, "", release=self._session_id)
+        return self._consul.kv.put(lock, "", release=self._session_id, dc=self.dc)
