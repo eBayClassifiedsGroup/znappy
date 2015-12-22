@@ -1,7 +1,6 @@
 """
 Usage:
-    znappy snapshot
-    znappy snaphost create [--force]
+    znappy snapshot create [--force]
     znappy snapshot list [--reverse] [--sort=<column>]
     znappy snapshot restore <name>
     znappy snapshot delete <name>
