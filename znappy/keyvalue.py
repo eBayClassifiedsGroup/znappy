@@ -67,9 +67,9 @@ class KeyValue(object):
     def acquire(self, lock, *args, **kwargs):
         logger.debug("trying to acquire lock {0} for {1}".format(lock, self._session_id))
         # TODO implement semaphore
-        result = self._consul.kv.put(lock, "", acquire=self._session_id)
+        result = self._consul.kv.put(lock, "", acquire=self._session_id, dc=self.dc)
         logger.debug(result)
         return result
 
     def release(self, lock, *args, **kwargs):
-        return self._consul.kv.put(lock, "", release=self._session_id)
+        return self._consul.kv.put(lock, "", release=self._session_id, dc=self.dc)
