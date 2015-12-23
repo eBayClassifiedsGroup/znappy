@@ -21,17 +21,12 @@ class MySQL(object):
             config.get('mycnf_section', 'client')
         )
 
-    def connect(self, *args, **kwargs):
-        try:
-            self.conn = MySQLdb.connect(
-                host='localhost',
-                user=self.mycnf.get('user', 'root'),
-                passwd=self.mycnf.get('password', None),
-                cursorclass=MySQLdb.cursors.DictCursor
-            )
-        except Exception, e:
-            return False, e.message
-        return True, "MySQL connected"
+        self.conn = MySQLdb.connect(
+            host='localhost',
+            user=self.mycnf.get('user', 'root'),
+            passwd=self.mycnf.get('password', None),
+            cursorclass=MySQLdb.cursors.DictCursor
+        )
 
     def load_mycnf(self, path, section):
         mycnf = {}
@@ -157,8 +152,7 @@ def load_handlers(config, keystore, register):
 
     mysql = MySQL(config)
     # agent
-    register("pre_snapshot", mysql.connect)
-    register("pre_snapshot", mysql.check_master, priority=1)
+    register("pre_snapshot", mysql.check_master)
     register("start_snapshot", mysql.start_snapshot)
     register("end_snapshot", mysql.end_snapshot)
     register("post_snapshot", mysql.close)
