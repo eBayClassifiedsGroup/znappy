@@ -21,6 +21,11 @@ class MySQL(object):
             config.get('mycnf_section', 'client')
         )
 
+    def connect(self):
+        if hasattr(self, 'conn') and self.conn.open:
+            return True
+
+        logger.debug('No open MySQL connection, setting up new')
         self.conn = MySQLdb.connect(
             host='localhost',
             user=self.mycnf.get('user', 'root'),
@@ -109,6 +114,7 @@ class MySQL(object):
         return True, ""
 
     def query(self, query):
+        self.connect()
         cursor = self.conn.cursor()
         cursor.execute(query)
         return cursor.fetchall()
