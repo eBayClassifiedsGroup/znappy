@@ -59,11 +59,14 @@ def action_restore(znappy, args):
 
 
 def action_delete(znappy, args):
-    drivers = znappy.config.get('drivers', [])
+    try:
+        znappy.snapshot = znappy.host.snapshots[args['<name>']]
+    except KeyError:
+        print "Snapshot not found on this host"
+        exit(1)
 
-    for driver in drivers:
-        driver_snapshots = filter(lambda s: s.driver == driver, znappy.host.snapshots.values())
-    pass
+    znappy.load_drivers()
+    znappy.execute_event(['delete_snapshot'], znappy.snapshot.driver, znappy.snapshot)
 
 
 def main(db, args):
