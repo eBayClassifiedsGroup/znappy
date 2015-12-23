@@ -208,7 +208,7 @@ class ZFSSnapshot(object):
         return True, 'restore complete'
 
     def check_snapshot_sync(self, znappy, *args, **kwargs):
-        local_snapshots = self.zfs_list(self, self.filesystem)
+        local_snapshots = self.zfs_snapshot_list(self, self.filesystem)
 
         local_snapshots = set(x.split('@', 2)[1] for x in local_snapshots)
         consul_snapshots = set(znappy.host.snapshots.keys())
