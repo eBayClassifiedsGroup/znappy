@@ -6,7 +6,7 @@ logger = logging.getLogger(__name__)
 
 
 class KeyValue(object):
-    def __init__(self, dc = None, **kwargs):
+    def __init__(self, dc=None, **kwargs):
         self._consul = consul.Consul(**kwargs)
         self.dc      = None
         self.node    = None

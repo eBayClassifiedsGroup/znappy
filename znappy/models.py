@@ -1,7 +1,7 @@
 import json
 import logging
 
-__all__ = ['db','Cluster','Host','Snapshot']
+__all__ = ['db', 'Cluster', 'Host', 'Snapshot']
 
 logger = logging.getLogger(__name__)
 db     = None
@@ -10,7 +10,6 @@ db     = None
 class Model(object):
     def __repr__(self):
         return "{0}({1})".format(self.__class__.__name__, self.name)
-
 
     def _load_children(self, path_str, obj):
         path = path_str.format(self.path())
@@ -56,7 +55,7 @@ class Cluster(Model):
 class Host(Model):
     path_str = "{}/hosts/{}"
 
-    def __init__(self, cluster, name = None):
+    def __init__(self, cluster, name=None):
         self.name      = name or db.node
         self.cluster   = cluster
         self.parent    = cluster.path()
@@ -75,7 +74,7 @@ class Host(Model):
 class Snapshot(Model):
     path_str = "{}/snapshots/{}"
 
-    def __init__(self, host, name = None):
+    def __init__(self, host, name=None):
         self.name    = name
         self.host    = host
         self.parent  = host.path()
@@ -94,12 +93,12 @@ class Snapshot(Model):
 
     def save(self):
         if self.name:
-            #update snapshot
+            # update snapshot
             return db.put(self.path(), json.dumps({
-                'name':   self.name,
+                'name': self.name,
                 'driver': self.driver,
                 'target': self.target,
-                'time':   self.time,
+                'time': self.time,
             }))
         else:
             return True
