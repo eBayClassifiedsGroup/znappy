@@ -146,7 +146,7 @@ class Znappy(object):
             try:
                 self.execute_event(['pre_snapshot'])
                 self.execute_event(['start_snapshot'])
-                self.execute_event(['create_snapshot'])
+                self.execute_event(['create_snapshot'], snapshot=self.snapshot)
             except ZnappyEventException, e:
                 if e.message != "Host is a master, no snapshots will be created":
                     raise e

@@ -170,11 +170,8 @@ class ZFSSnapshot(object):
 
         return True, 'zfs_snapshot deleted'
 
-    def start_restore(self, snapshot=None, *args, **kwargs):
-        if not snapshot:
-            return False, 'No snapshot to restore'
-
-        cmd = local("fuser -k -9 -m /$(zfs get -H -o value mountpoint {})".format(snapshot.target))
+    def start_restore(self, *args, **kwargs):
+        cmd = local("fuser -k -9 -m /$(zfs get -H -o value mountpoint {})".format(self.filesystem))
 
         logger.debug(cmd)
 
