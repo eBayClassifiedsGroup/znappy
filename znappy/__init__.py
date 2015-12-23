@@ -60,10 +60,11 @@ class Znappy(object):
                 # reload all the drivers on each run
                 pkg.load_handlers(drivers[driver], self.snapshot, register=self.register)
             except ImportError, e:
+                logger.fatal("Failed to load driver: {}.. skipping".format(e.message))
                 raise e
-                logger.warn("Failed to load driver: {}.. skipping".format(e.message))
             except AttributeError, e:
-                logger.warn("Driver {} has no attribute {}".format(driver, 'load_handlers'))
+                logger.fatal("Driver {} has no attribute {}".format(driver, 'load_handlers'))
+                raise e
 
     def check_update(self):
         snapshots = self.host.snapshots.values()
