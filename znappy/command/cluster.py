@@ -100,7 +100,7 @@ def action_restore(znappy, t):
     env.user     = raw_input('[ldap] username: ')
     env.password = getpass.getpass('[sudo] password for {}: '.format(env.user))
 
-    if not tsudo('localhost', '/bin/true'):
+    if not tsudo('localhost', '/bin/true').return_code == 0:
         return 'Failed to verify credentials'
 
     # lock the whole cluster
@@ -109,12 +109,9 @@ def action_restore(znappy, t):
 
     # time to bork the sjit
     try:
-        znappy.load_drivers()
-        znappy.execute_event(['pre_cluster_restore'])
-        for snapshot in snapshots:
-            env.host_string = snapshot.host
-            sudo('znappy snapshot restore {0}'.format(snapshot.name))
-        znappy.execute_event(['post_cluster_restore'], master_host=master.host)
+        for host in snapshots:
+            env.host_string = host
+            sudo('znappy snapshot restore {0}'.format(snapshots[host].name))
     # ye it should be that easy
     except Exception, e:
         print e.message

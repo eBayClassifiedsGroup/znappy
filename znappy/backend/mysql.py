@@ -66,7 +66,7 @@ class MySQL(object):
     @task
     def start_mysql(self):
         with settings(hide('running', 'stdout')):
-            return local('service mysql start --skip-slave-start').return_code == 0, ""
+            return local('service mysql start --skip-slave-start').return_code == 0, "start_mysql"
 
     def i_am_master(self):
         read_only = self.query('SHOW GLOBAL VARIABLES LIKE "read_only"')[0]['Value']
@@ -114,10 +114,10 @@ class MySQL(object):
         return cursor.fetchall()
 
     def stop(self):
-        self.stop_mysql(self)
+        return self.stop_mysql(self)
 
     def start(self):
-        self.start_mysql(self)
+        return self.start_mysql(self)
 
     def check_master(self):
         if self.i_am_master():

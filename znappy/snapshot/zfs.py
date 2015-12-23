@@ -13,10 +13,10 @@ class ZFSSnapshot(object):
     def zfs_get_properties(self):
         if self.properties:
             properties = ','.join(self.properties)
-            cmd = '/sbin/zfs get -H -o properties,value {} {filesystem}'.format(properties, **self.snapshot)
+            cmd = '/sbin/zfs get -H -o property,value {} {filesystem}'.format(properties, filesystem=self.snapshot.target)
 
-            logger('Getting properties from {}'.format(self.snapshot.filesystem))
-            logger('Executing {}'.format(cmd))
+            logger.debug('Getting properties from {}'.format(self.snapshot.target))
+            logger.debug('Executing {}'.format(cmd))
 
             result = local(cmd, capture=True)
 
@@ -42,8 +42,8 @@ class ZFSSnapshot(object):
     def zfs_snapshot_clone(self, clone_name, properties):
         prop_list = ' '.join(map(lambda p: "-o {}={}".format(p, properties[p]), properties))
 
-        cmd = '/sbin/zfs clone {} {filesystem}@{name} {}'.format(prop_list, clone_name, **self.snapshot)
-        logger.debug('Cloning {filesystem}@{name} into {}'.format(clone_name, **self.snapshot))
+        cmd = '/sbin/zfs clone {} {filesystem}@{name} {}'.format(prop_list, clone_name, name=self.snapshot.name, filesystem=self.snapshot.target)
+        logger.debug('Cloning {filesystem}@{name} into {}'.format(clone_name, name=self.snapshot.name, filesystem=self.snapshot.target))
         logger.debug('Executing: {}'.format(cmd))
 
         if local(cmd).return_code != 0:
@@ -61,8 +61,8 @@ class ZFSSnapshot(object):
 
     @task
     def zfs_snapshot_rename(self, clone_name):
-        cmd = '/sbin/zfs rename {} {filesystem}'.format(clone_name, **dict(self))
-        logger.debug('Renaming {} to {filesystem}'.format(clone_name, **dict(self)))
+        cmd = '/sbin/zfs rename {} {filesystem}'.format(clone_name, filesystem=self.snapshot.target)
+        logger.debug('Renaming {} to {filesystem}'.format(clone_name, filesystem=self.snapshot.target))
         logger.debug('Executing: {}'.format(cmd))
 
         if local(cmd).return_code != 0:
@@ -77,7 +77,12 @@ class ZFSSnapshot(object):
 
     @task
     def zfs_snapshot_destroy(self, target):
-        if local('/sbin/zfs destroy -r {}'.format(target)).return_code != 0:
+        cmd = '/sbin/zfs destroy -r {}'.format(target)
+
+        logger.debug('Destroying {}'.format(target))
+        logger.debug('Executing: {}'.format(cmd))
+
+        if local(cmd).return_code != 0:
             raise SnapshotException('Failed to destroy snapshot')
 
     @task
@@ -141,8 +146,8 @@ class ZFSSnapshot(object):
     def save(self, *args, **kwargs):
         return self.snapshot.save(), 'zfssnapshot_save'
 
-    def start_restore(self, snapshot, *args, **kwargs):
-        cmd = local("fuser -k -9 -m /$(zfs get -H -o value mountpoint {})".format(snapshot.target))
+    def start_restore(self, *args, **kwargs):
+        cmd = local("fuser -k -9 -m /$(zfs get -H -o value mountpoint {})".format(self.snapshot.target))
 
         logger.debug(cmd)
 
