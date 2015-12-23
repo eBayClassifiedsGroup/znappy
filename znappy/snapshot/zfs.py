@@ -1,5 +1,4 @@
 import time
-from znappy.utils import register_handler
 from fabric.api import env, local, output, task
 
 import logging
@@ -143,10 +142,9 @@ class ZFSSnapshot(object):
             return False, 'No snapshot given!'
 
         logger.debug('creating snapshot')
-        result = self.zfs_snapshot_create(self, self.filesystem)
 
         try:
-            name, create_time = self.zfs_snapshot(self)
+            name, create_time = self.zfs_snapshot_create(self)
 
             snapshot.driver = self.driver
             snapshot.name = name
@@ -155,16 +153,16 @@ class ZFSSnapshot(object):
         except:
             logger.fatal('Snapshot failed :(')
             return False, 'Failed to create snapshot'
-            
+
         return True, 'snapshot created'
 
     def delete_snapshot(self, snapshot=None, *args, **kwargs):
         try:
             snapshot_name = "{}@{}".format(snapshot.target, snapshot.name)
-            logger.debug("Deleting snapshot: {}".format(s.name))
+            logger.debug("Deleting snapshot: {}".format(snapshot_name))
             self.zfs_destroy(self, snapshot_name)
         except SnapshotException:
-            # It may be that the snapshot is still in the keystore, but not
+                # It may be that the snapshot is still in the keystore, but not
             # on the filesystem/zfs, ignore these errors for now
             pass
 
