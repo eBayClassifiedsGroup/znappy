@@ -58,7 +58,7 @@ class Znappy(object):
 
                 # TODO I wanna get rid of this parameter so I don't need
                 # reload all the drivers on each run
-                pkg.load_handlers(drivers[driver], self.snapshot, register=self.register)
+                pkg.load_handlers(drivers[driver], register=self.register)
             except ImportError, e:
                 logger.fatal("Failed to load driver: {}.. skipping".format(e.message))
                 raise e
@@ -90,7 +90,8 @@ class Znappy(object):
             driver_snapshots = filter(lambda s: s.driver == driver and s.time < time_offset, snapshots)
             logger.debug(driver_snapshots)
 
-            self.execute_event(['delete_snapshot'], driver, driver_snapshots)
+            for snapshot in driver_snapshots:
+                self.execute_event(['delete_snapshot'], driver, snapshot=snapshot)
 
     def register(self, event, handler, priority=0):
         caller = inspect.getmodule(inspect.stack()[1][0]).__name__
@@ -154,9 +155,9 @@ class Znappy(object):
             finally:
                 self.execute_event(['end_snapshot'])
                 self.execute_event(['post_snapshot'])
-                self.execute_event(['save_snapshot'])
                 self.cluster.release()
 
+            self.snapshot.save()
             self.clean_snapshots()
 
     def monitor(self, *args, **kwargs):

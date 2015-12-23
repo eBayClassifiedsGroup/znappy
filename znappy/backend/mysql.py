@@ -153,9 +153,7 @@ class MySQL(object):
                          "--dead-master --assume-yes".format(master, cred_file)).return_code == 0, ""
 
 
-def load_handlers(config, keystore, register):
-    logger.debug('called with config: {}'.format(config))
-
+def load_handlers(config, register):
     mysql = MySQL(config)
     # agent
     register("pre_snapshot", mysql.check_master)
