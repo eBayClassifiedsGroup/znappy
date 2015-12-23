@@ -31,7 +31,7 @@ def action_list(znappy, args):
     for s in znappy.host.snapshots.values():
         table.add_row([s.name, s.driver, s.target, s.time])
 
-    print table.get_string(sortby=args.get('--sort', 'name'), reversesort=args['--reverse'])
+    print table.get_string(sortby=args.get('--sort', 'time'), reversesort=args.get('--reverse', False))
 
 
 def action_restore(znappy, args):
@@ -44,13 +44,12 @@ def action_restore(znappy, args):
         logger.fatal('Snapshot name `{}` not found or ambiguous')
         exit(1)
 
-    znappy.snapshot = candidates[0]
     znappy.load_drivers()
 
     try:
         znappy.execute_event(['pre_restore'])
         znappy.execute_event(['start_restore'])
-        znappy.execute_event(['do_restore'])
+        znappy.execute_event(['do_restore'], None, snapshot=candidates[0])
     except Exception:
         logger.fatal('Could not restore!')
     finally:
@@ -60,13 +59,13 @@ def action_restore(znappy, args):
 
 def action_delete(znappy, args):
     try:
-        znappy.snapshot = znappy.host.snapshots[args['<name>']]
+        snapshot = znappy.host.snapshots[args['<name>']]
     except KeyError:
         print "Snapshot not found on this host"
         exit(1)
 
     znappy.load_drivers()
-    znappy.execute_event(['delete_snapshot'], znappy.snapshot.driver, znappy.snapshot)
+    znappy.execute_event(['delete_snapshot'], znappy.snapshot.driver, snapshot=snapshot)
 
 
 def main(db, args):

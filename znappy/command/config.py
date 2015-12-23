@@ -2,7 +2,7 @@
 
 Usage:
     znappy config get
-    znappy config update (--config=<FILE>)
+    znappy config update [--config=<FILE>]
 
 Options:
     -c=<FILE>, --config=<FILE>  YAML configuration file to use [default: /etc/znappy/cluster.yaml]
