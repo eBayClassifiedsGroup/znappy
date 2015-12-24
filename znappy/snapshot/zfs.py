@@ -88,9 +88,11 @@ class ZFSSnapshot(object):
         create_time = int(time.time())
         name = "{driver}-{target}-{time}".format(
             driver=self.driver,
-            filesystem=target.replace('/', '.'),
+            target=target.replace('/', '.'),
             time=create_time
         )
+
+        logger.debug("Creating snapshot with name {name} on {target}".format(name=name, target=target))
 
         cmd = '/sbin/zfs snap {target}@{name}'.format(
             target=target,
@@ -114,7 +116,10 @@ class ZFSSnapshot(object):
 
     @task
     def zfs_snapshot_list(self, target):
-        result = local('/sbin/zfs get -H -o value name -t snapshot {target}'.format(target=target), capture=True)
+        cmd = '/sbin/zfs get -r -H -o value name -t snapshot {target}'.format(target=target)
+
+        logger.debug("Executing {}".format(cmd))
+        result = local(cmd, capture=True)
 
         if result.return_code != 0:
             raise SnapshotException('Failed to list snapshots')
@@ -144,7 +149,7 @@ class ZFSSnapshot(object):
         logger.debug('creating snapshot')
 
         try:
-            name, create_time = self.zfs_snapshot_create(self)
+            name, create_time = self.zfs_snapshot_create(self, self.filesystem)
 
             snapshot.driver = self.driver
             snapshot.name = name
@@ -186,7 +191,7 @@ class ZFSSnapshot(object):
 
         snapshot_name = "{}@{}".format(snapshot.target, snapshot.name)
 
-        properties = self.zfs_get_properties(snapshot.target)
+        properties = self.zfs_get_properties(self, snapshot.target)
 
         logger.debug(clone_name)
 
@@ -194,7 +199,7 @@ class ZFSSnapshot(object):
         try:
             self.zfs_unmount(self, self.filesystem)
             self.zfs_clone(self, snapshot_name, clone_name, properties)
-            self.zfs_snapshot_promote(self, clone_name)
+            self.zfs_promote(self, clone_name)
             self.zfs_destroy(self, self.filesystem)
             # set mountpoint
             self.zfs_rename(self, clone_name, self.filesystem)

@@ -35,6 +35,6 @@ def snapshot_count(znappy, *args, **kwargs):
     return True, (0, "OK: snapshot count is ok")
 
 
-def load_handlers(config, snapshot, register=None):
+def load_handlers(config, register):
     register("monitor", snapshot_age, priority=100)
     register("monitor", snapshot_count, priority=101)
