@@ -55,10 +55,7 @@ class Znappy(object):
         for driver in drivers.keys():
             try:
                 pkg = importlib.import_module(driver)
-
-                # TODO I wanna get rid of this parameter so I don't need
-                # reload all the drivers on each run
-                pkg.load_handlers(drivers[driver], register=self.register)
+                pkg.load_handlers(drivers[driver], self.register)
             except ImportError, e:
                 logger.fatal("Failed to load driver: {}.. skipping".format(e.message))
                 raise e
@@ -92,6 +89,7 @@ class Znappy(object):
 
             for snapshot in driver_snapshots:
                 self.execute_event(['delete_snapshot'], driver, snapshot=snapshot)
+                snapshot.delete()
 
     def register(self, event, handler, priority=0):
         caller = inspect.getmodule(inspect.stack()[1][0]).__name__

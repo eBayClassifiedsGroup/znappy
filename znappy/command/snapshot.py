@@ -4,10 +4,16 @@ Usage:
     znappy snapshot list [--reverse] [--sort=<column>]
     znappy snapshot restore <name>
     znappy snapshot delete <name>
+
+Options:
+    --force          Bypass lock and snapshot time
+    --sort=<column>  Column to sort listing [default: name]
+    --reverse        Reverse the column sorting
 """
 
 from znappy import Znappy
 from prettytable import PrettyTable
+from datetime import datetime
 
 import sys
 import logging
@@ -29,9 +35,14 @@ def action_list(znappy, args):
     table = PrettyTable(fields=["name", "driver", "target", "time"])
 
     for s in znappy.host.snapshots.values():
-        table.add_row([s.name, s.driver, s.target, s.time])
+        table.add_row([
+            s.name,
+            s.driver,
+            s.target,
+            datetime.fromtimestamp(int(s.time)).strftime('%Y-%m-%d %H:%M:%S')
+        ])
 
-    print table.get_string(sortby=args.get('--sort', 'time'), reversesort=args.get('--reverse', False))
+    print table.get_string(sortby=args['--sort'], reversesort=args.get('--reverse', False))
 
 
 def action_restore(znappy, args):
@@ -65,7 +76,8 @@ def action_delete(znappy, args):
         exit(1)
 
     znappy.load_drivers()
-    znappy.execute_event(['delete_snapshot'], znappy.snapshot.driver, snapshot=snapshot)
+    znappy.execute_event(['delete_snapshot'], snapshot.driver, snapshot=snapshot)
+    snapshot.delete()
 
 
 def main(db, args):

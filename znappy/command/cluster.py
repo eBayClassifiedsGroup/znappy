@@ -13,7 +13,10 @@ import sys
 import getpass
 from datetime import datetime
 from prettytable import PrettyTable
-from fabric.api import env, sudo, task
+from fabric.api import env, sudo, task, output
+
+for k in output:
+    output[k] = False
 
 env.warn_only = True
 
