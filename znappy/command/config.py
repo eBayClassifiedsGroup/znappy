@@ -36,10 +36,10 @@ def action_update(znappy, db, args):
         logger.fatal('New configuration does not have a version, ignoring update')
         exit(1)
 
-    if new_config['config-version'] > old_config.get('config-version', 1):
+    if new_config['config-version'] > old_config.get('config-version', -1):
         logger.info("Newer config version: (new:{}, old:{})".format(
             new_config['config-version'],
-            old_config.get('config-version', 1)
+            old_config.get('config-version', -1)
         ))
 
         # update the config in consul
