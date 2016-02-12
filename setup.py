@@ -38,7 +38,4 @@ setup(
     scripts=[
         'bin/znappy',
     ],
-    data_files=[
-        ('/etc/init/', ['etc/init/znappy-daemon.conf'])
-    ]
 )
