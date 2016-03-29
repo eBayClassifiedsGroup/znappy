@@ -1,0 +1,372 @@
+#!/usr/bin/env python
+"""
+Usage:
+  zpyglass.py (--datetime=DATE) [--option=ARG...] [options]
+
+Options:
+  --debug                  Enable debug logging
+  --datetime=DATE          Date to recover [format: YYYY-mm-dd HH:MM:SS]
+  --defaults-file=FILE     Defaults file for MySQL [default: /etc/mysql/my.cnf]
+  --filesystem=FILESYSTEM  ZFS Filesystem which containts the snapshots [default: data/mysql]
+  --mountpoint=MOUNTPOINT  Mountpoint of the recovery data [default: mysql_recovery]
+  -o ARG, --option=ARG     Extra mysqld arguments
+"""
+
+from ConfigParser import ConfigParser
+from datetime import datetime
+from docopt import docopt
+from fabric.api import local, output
+from os import stat
+from MySQLdb import connect, Warning
+from MySQLdb.cursors import DictCursor
+from warnings import filterwarnings, resetwarnings
+from socket import getfqdn, gethostbyname
+from time import sleep, mktime
+import logging
+import re
+import subprocess
+import os.path
+import sys
+
+logging.basicConfig(format="%(asctime)s [%(levelname)-8.8s] %(message)s")
+
+logger = logging.getLogger(__name__)
+
+
+def get_bin_logs(defaults_file):
+    cp = ConfigParser(allow_no_value=True)
+    cp.read(defaults_file)
+    bin_log_index = cp.get('mysqld', 'log_bin_index')
+
+    logger.debug('binlog index file: {}'.format(bin_log_index))
+
+    with open(bin_log_index, 'r') as fp:
+        bin_logs = fp.read().splitlines()
+
+    logger.debug('binlogs in index file: {}'.format(bin_logs))
+
+    return bin_logs
+
+
+def find_bin_log_candidate(bin_logs, recovery_time):
+    # sort the binlogs in reserver order, assuming no truncation for now
+    bin_logs.sort()
+    for bin_log in bin_logs:
+        mtime = stat(bin_log).st_mtime
+        logger.debug('binlog: {} has mtime: {}'.format(bin_log, mtime))
+        if recovery_time < mtime:
+            # it should be in this binlog
+            logger.debug('binlog: {} is a candidate'.format(bin_log))
+            break
+
+    return bin_log
+
+
+def get_gtid(bin_log, stop_time):
+    output = local('mysqlbinlog --stop-datetime="{}" {} | grep GTID_NEXT | grep -v AUTO | tail -n 1'.format(stop_time, bin_log), capture=True)
+    match = re.search(r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}:[\d]+', output)
+
+    if match:
+        return match.group(0)
+
+
+def get_snapshot(stop_time, filesystem):
+    output = local('zfs get -o value name,creation -pH -r -t snapshot {}'.format(filesystem), capture=True)
+
+    snapshots = output.splitlines()
+    index = len(snapshots) - 1
+
+    try:
+        while int(snapshots[index]) > int(stop_time):
+            index -= 2
+    except Exception:
+        logger.fatal('No snapshots found before query time!')
+        sys.exit(0)
+
+    return snapshots[index - 1]
+
+
+def zfs_get_properties(filesystem, fields):
+    cmd = '/sbin/zfs get -H -o property,value {properties} {target}'.format(
+        properties=','.join(fields),
+        target=filesystem
+    )
+
+    logger.debug('Getting properties from {}'.format(filesystem))
+    logger.debug('Executing {}'.format(cmd))
+
+    result = local(cmd, capture=True)
+
+    return {k.split()[0]: k.split()[1] for k in result.splitlines()}
+
+
+def zfs_clone(source, target, properties):
+    # convert dict to the form of -o key=value
+    prop_list = ' '.join(map(lambda p: "-o {}={}".format(p, properties[p]), properties))
+
+    cmd = '/sbin/zfs clone {prop_list} {source} {target}'.format(
+        prop_list=prop_list,
+        source=source,
+        target=target
+    )
+
+    logger.debug('Cloning {source} into {target}'.format(
+        source=source,
+        target=target
+    ))
+
+    logger.debug('Executing: {}'.format(cmd))
+
+    local(cmd)
+
+
+def zfs_destroy(target):
+    cmd = '/sbin/zfs destroy {}'.format(target)
+
+    logger.info('Destroying: {}'.format(target))
+    logger.debug('Executing: {}'.format(cmd))
+
+    local(cmd)
+
+
+def mount_snapshot(snapshot, clone_path):
+    filesystem, ident = snapshot.split('@')
+
+    # get the pool from the snapshot name, the clone can only be in the same pool
+    pool, path = filesystem.split('/', 1)
+    clone_name = "{}/{}".format(pool, clone_path)
+
+    # get the properties of the parent
+    properties = zfs_get_properties(filesystem, ['atime', 'compression', 'primarycache', 'recordsize', 'sync'])
+    logger.debug('properties found: {}'.format(properties))
+
+    zfs_clone(snapshot, clone_name, properties)
+
+    return clone_name
+
+
+def build_mysqld_arguments(mountpoint, extra_options):
+    # split if options has equals sign, else return k: ''
+    extra_arguments = [o.split('=', 1) if o.count('=') else (o, '') for o in extra_options]
+
+    logger.debug(extra_arguments)
+
+    arguments = {
+        'datadir': '/{mountpoint}/data',
+        'innodb-buffer-pool-size': '1G',
+        'innodb-data-home-dir': '/{mountpoint}/data',
+        'innodb-log-group-home-dir': '/{mountpoint}/journal',
+        'key-buffer-size': '2M',
+        'log-bin': '/{mountpoint}/binary/mysqld-binlog',
+        'log-bin-index': '/{mountpoint}/binary/mysqld-binlog.index',
+        'log-error': '/{mountpoint}/log/recovery.log',
+        'relay-log': '/{mountpoint}/relay/relay-bin',
+        'relay-log-index': '/{mountpoint}/relay/relay-bin.index',
+        'relay-log-recovery': 'OFF',
+        'report-host': 'zpyglass-{hostname}',
+        'server-id': '{server_id}',
+        'slow-query-log-file': '/{mountpoint}/log/recovery-slow.log',
+        'tmpdir': '/{mountpoint}/tmp',
+        'port': '3307',
+        'socket': '/var/run/mysqld/mysqld-zpyglass.sock',
+        'user': 'mysql',
+        'basedir': '/usr',
+        'plugin-dir': '/{mountpoint}/plugin',
+        'open-files-limit': '32768',
+        'pid-file': '/{mountpoint}/data/mysqld.pid',
+        'skip-slave-start': ''
+    }
+
+    arguments.update(extra_arguments)
+    logger.debug(arguments)
+
+    ip = gethostbyname(getfqdn()).split('.')
+
+    properties = {
+        'mountpoint': mountpoint,
+        'hostname': getfqdn(),
+        'server_id': "2{1:03d}{2:03d}{3:03d}".format(*map(int, ip)),
+    }
+
+    # replace the {NAME} in the argument list
+    return {k: v.format(**properties) for k, v in arguments.items()}
+
+
+def rebuild_indices(mysqld_arguments):
+    for index_name, log_name in [('log-bin-index', 'log-bin'), ('relay-log-index', 'relay-log')]:
+        log_index = mysqld_arguments.get(index_name)
+        log = mysqld_arguments.get(log_name)
+
+        indices = local('find {} -type f -not -name "*.index" | sort'.format(os.path.dirname(log)), capture=True)
+
+        logger.debug('indices: {}'.format(indices))
+
+        with open(log_index, 'w') as index:
+            index.write('{}\n'.format(indices))
+            pass
+
+
+def remove_server_uuid(mysqld_arguments):
+    local('rm {datadir}/auto.cnf'.format(**mysqld_arguments))
+
+
+def start_mysqld(mysqld_arguments):
+    # if key has a string: format --k=v, else format --k
+    arguments = ["--{}={}".format(k, v) if v else "--{}".format(k) for k, v in mysqld_arguments.items()]
+    logger.debug(arguments)
+
+    # using subprocess since it's easier to detach it
+    subprocess.Popen(['/usr/sbin/mysqld'] + arguments, stderr=open('/dev/null', 'wb'))
+
+
+def wait_for_start(mysqld_arguments):
+    conn = None
+    breaker = 0
+    while not conn and breaker < 60:
+        try:
+            conn = connect(
+                read_default_file='/root/.my.cnf',
+                unix_socket=mysqld_arguments.get('socket'),
+                connect_timeout=1,
+                cursorclass=DictCursor
+            )
+        except Exception:
+            logger.debug('Can not connect just yet.. waiting..')
+            pass
+        sleep(1)
+        breaker += 1
+
+    return conn
+
+
+def start_replication_until(conn, gtid):
+    cursor = conn.cursor()
+    cursor.execute('RESET SLAVE')
+
+    # this causes an annoying warning in some cases, ignore it
+    filterwarnings('ignore', category=Warning)
+    cursor.execute('START SLAVE UNTIL SQL_BEFORE_GTIDS=%s', (gtid))
+    resetwarnings()
+
+
+def wait_for_replication(conn):
+    delay = 0
+    breaker = 0
+    while delay is not None and breaker < 1800:
+        cursor = conn.cursor()
+        cursor.execute('SHOW SLAVE STATUS NONBLOCKING')
+        result = cursor.fetchall()
+        delay = result[0]['Seconds_Behind_Master']
+
+        if breaker % 10 == 0:
+            logger.info('Waiting for ketchup, current delay: {}'.format(delay))
+
+        sleep(1)
+        breaker += 1
+
+
+def wait_for_stop():
+    count = 1
+    breaker = 0
+
+    while (count > 0 and breaker < 120):
+        count = int(local('lsof /data/mysql_recovery | wc -l', capture=True))
+        logger.debug("Open files: {}".format(count))
+
+        sleep(1)
+        breaker += 1
+
+    return (count == 0)
+
+
+def check_permissions():
+    return (os.getuid() is not 0)
+
+if __name__ == "__main__":
+    args = docopt(__doc__)
+
+    if check_permissions():
+        # For now commands are executed without sudo, so we can't ask for a password
+        logger.fatal('This script requires root')
+        sys.exit(1)
+
+    if args['--debug']:
+        logger.setLevel(logging.DEBUG)
+    else:
+        logger.setLevel(logging.INFO)
+        for c in output.keys():
+            output[c] = False
+
+    logger.debug(args)
+
+    # convert time to unix timestamp
+    try:
+        parse_time = mktime(datetime.strptime(args['--datetime'], "%Y-%m-%d %H:%M:%S").timetuple())
+    except ValueError, e:
+        logger.warn(e.message)
+        sys.exit(1)
+
+    # find all the binlogs on the default instance
+    bin_logs = get_bin_logs(args['--defaults-file'])
+
+    # get the most likely binlog candidate for the given time
+    candidate = find_bin_log_candidate(bin_logs, parse_time)
+    logger.info('candidate: {}'.format(candidate))
+
+    # get the gtid of the given time, we need this to start replication untill this transaction
+    gtid = get_gtid(candidate, args['--datetime'])
+    logger.info('found gtid: {}'.format(gtid))
+
+    # get the snapshot for the given time, this reduces the time needed to replicate
+    snapshot = get_snapshot(parse_time, args['--filesystem'])
+    logger.info('found snapshot: {}'.format(snapshot))
+
+    logger.info('Cloning snapshot')
+    mountpoint = mount_snapshot(snapshot, args['--mountpoint'])
+
+    logger.info('Building mysqld arguments')
+    mysqld_arguments = build_mysqld_arguments(mountpoint, args['--option'])
+    logger.debug('Using mysqld arguments: {}'.format(mysqld_arguments))
+
+    logger.info('Rebuilding bin/relay log indices')
+    rebuild_indices(mysqld_arguments)
+
+    logger.info('Remove auto.cnf to resolve conflicting server_uuids')
+    remove_server_uuid(mysqld_arguments)
+
+    # start the mysqld service for recovery
+    logger.info('Starting the mysqld service')
+    start_mysqld(mysqld_arguments)
+
+    logger.info('Waiting for mysqld to start')
+    conn = wait_for_start(mysqld_arguments)
+
+    if conn:
+        sleep(1)
+        logger.info('MySQL started')
+        # sleep a little more to be sure
+
+        logger.info('Starting replication until GTID: {}'.format(gtid))
+        start_replication_until(conn, gtid)
+
+        logger.info('Waiting for replication to ketchup')
+        wait_for_replication(conn)
+
+        logger.info('Connect to mysql using: mysql -S {}'.format(mysqld_arguments['socket']))
+        logger.info('Now entering sleep.. Press Ctrl+C to exit')
+        try:
+            while True:
+                sleep(60)
+        except KeyboardInterrupt:
+            pass
+    else:
+        logger.warn('Looks like MySQL failed to start, or it took too long, eitherway, exiting...')
+
+    logger.info('Stopping the mysqld instance')
+    local('kill -15 $(cat {pid-file})'.format(**mysqld_arguments))
+
+    logger.info('waiting for all open files to the mountpoint to close')
+    wait_for_stop()
+
+    logger.info('removing clone')
+    zfs_destroy(mountpoint)

@@ -1,0 +1,45 @@
+<html>
+    <head>
+        <script src='http://code.jquery.com/jquery-2.2.0.js'></script>
+        <script src='http://d3js.org/d3.v3.js'></script>
+
+        <script>
+            $(document).ready(function() {
+                $.ajax({
+                        url: 'http://localhost:8500/v1/kv/service/znappy/clusters/dbads/hosts/?recurse'
+                    })
+                .done(function(data) {
+                    result = {}
+
+                    for (i in data) {
+                        key = data[i]['Key'];
+                        path = key.split('/');
+                        if (!(path.length == 8 && path[7].length > 0)) continue;
+
+                        var host = path[5],
+                            snapshot = $.parseJSON(atob(data[i]['Value']));
+
+                        if (!(host in result)) result[host] = [];
+
+                        result[host].push(snapshot.time);
+
+                        // console.log(host)
+                        // console.log(snapshot)
+                    }
+                    console.log(result);
+
+                    drawgraph(result)
+                });
+            });
+
+            function drawgraph(data) {
+                var chart = d3.select('body')
+                    .append('svg:svg')
+                    .attr('width', '50%')
+                    .attr('height', '50%');
+            }
+        </script>
+    </head>
+    <body>
+    </body>
+</html>

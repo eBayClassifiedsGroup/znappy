@@ -8,7 +8,7 @@ def read(fname):
 
 setup(
     name="znappy",
-    version="0.1.12",
+    version="0.1.13",
     author="Jorn Wijnands",
     author_email="jwijnands@ebay.com",
     maintainer="Jorn Wijnands",
@@ -37,5 +37,6 @@ setup(
     ],
     scripts=[
         'bin/znappy',
+        'bin/zpyglass',
     ],
 )
