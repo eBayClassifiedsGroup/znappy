@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """
 Usage:
-  zpyglass.py (--datetime=DATE) [--option=ARG...] [options]
+  zpyglass (--datetime=DATE) [--option=ARG...] [options]
 
 Options:
   --debug                  Enable debug logging
@@ -203,7 +203,6 @@ def rebuild_indices(mysqld_arguments):
 
         with open(log_index, 'w') as index:
             index.write('{}\n'.format(indices))
-            pass
 
 
 def remove_server_uuid(mysqld_arguments):
@@ -282,6 +281,7 @@ def wait_for_stop():
 def check_permissions():
     return (os.getuid() is not 0)
 
+
 if __name__ == "__main__":
     args = docopt(__doc__)
 
@@ -353,7 +353,7 @@ if __name__ == "__main__":
         wait_for_replication(conn)
 
         logger.info('Connect to mysql using: mysql -S {}'.format(mysqld_arguments['socket']))
-        logger.info('Now entering sleep.. Press Ctrl+C to exit')
+        logger.info('Now entering sleep.. Press Ctrl+C to stop the mysqld service and cleanup the mountpoint')
         try:
             while True:
                 sleep(60)
