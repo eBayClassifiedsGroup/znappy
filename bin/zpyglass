@@ -9,6 +9,7 @@ Options:
   --defaults-file=FILE     Defaults file for MySQL [default: /etc/mysql/my.cnf]
   --filesystem=FILESYSTEM  ZFS Filesystem which containts the snapshots [default: data/mysql]
   --mountpoint=MOUNTPOINT  Mountpoint of the recovery data [default: mysql_recovery]
+  --skip-replication       Skip binlog scan and replication
   -o ARG, --option=ARG     Extra mysqld arguments
 """
 
@@ -306,16 +307,19 @@ if __name__ == "__main__":
         logger.warn(e.message)
         sys.exit(1)
 
-    # find all the binlogs on the default instance
-    bin_logs = get_bin_logs(args['--defaults-file'])
+    if not args['--skip-replication']:
+        # find all the binlogs on the default instance
+        bin_logs = get_bin_logs(args['--defaults-file'])
 
-    # get the most likely binlog candidate for the given time
-    candidate = find_bin_log_candidate(bin_logs, parse_time)
-    logger.info('candidate: {}'.format(candidate))
+        # get the most likely binlog candidate for the given time
+        candidate = find_bin_log_candidate(bin_logs, parse_time)
+        logger.info('candidate: {}'.format(candidate))
 
-    # get the gtid of the given time, we need this to start replication untill this transaction
-    gtid = get_gtid(candidate, args['--datetime'])
-    logger.info('found gtid: {}'.format(gtid))
+        # get the gtid of the given time, we need this to start replication untill this transaction
+        gtid = get_gtid(candidate, args['--datetime'])
+        logger.info('found gtid: {}'.format(gtid))
+    else:
+        logger.info('Skipping binlog-scan')
 
     # get the snapshot for the given time, this reduces the time needed to replicate
     snapshot = get_snapshot(parse_time, args['--filesystem'])
@@ -346,8 +350,11 @@ if __name__ == "__main__":
         logger.info('MySQL started')
         # sleep a little more to be sure
 
-        logger.info('Starting replication until GTID: {}'.format(gtid))
-        start_replication_until(conn, gtid)
+        if not args['--skip-replication']:
+            logger.info('Starting replication until GTID: {}'.format(gtid))
+            start_replication_until(conn, gtid)
+        else:
+            logger.info('Skipping replication')
 
         logger.info('Waiting for replication to ketchup')
         wait_for_replication(conn)
