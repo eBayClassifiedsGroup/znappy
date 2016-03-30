@@ -1,3 +1,7 @@
+"""
+Znappy package for Python
+"""
+
 from bisect import insort
 from collections import namedtuple
 from znappy import models
@@ -8,7 +12,9 @@ import logging
 import time
 
 __all__ = ['Znappy', 'ZnappyEventException']
-
+__author__ = "Jorn Wijnands"
+__version__ = "0.1.13"
+__date__ = "30 March 2016"
 
 logger = logging.getLogger(__name__)
 

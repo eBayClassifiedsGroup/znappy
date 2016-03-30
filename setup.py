@@ -1,4 +1,5 @@
 import os
+import znappy
 from setuptools import setup, find_packages
 
 
@@ -8,17 +9,15 @@ def read(fname):
 
 setup(
     name="znappy",
-    version="0.1.13",
-    author="Jorn Wijnands",
+    version=znappy.__version__,
+    author=znappy.__author__,
     author_email="jwijnands@ebay.com",
-    maintainer="Jorn Wijnands",
-    maintainer_email="jwijnands@ebay.com",
     description=("Tool for creating and managing (distributed) ZFS snapshots"),
     long_description=read('README.md'),
-    license="GPL",
+    license="MIT",
     keywords="python zfs snapshot backup",
-    url="https://github.corp.ebay.com/ecg-marktplaats/so-znappy",
-    packages=['znappy'] + [os.path.join("znappy", p) for p in find_packages("znappy")],
+    url="https://github.com/eBayClassifiedsGroup/znappy",
+    packages=["znappy"] + [os.path.join("znappy", p) for p in find_packages("znappy")],
     include_package_data=True,
     zip_safe=False,
     classifiers=[
@@ -36,7 +35,7 @@ setup(
         "python-pyyaml",
     ],
     scripts=[
-        'bin/znappy',
-        'bin/zpyglass',
+        "bin/znappy",
+        "bin/zpyglass",
     ],
 )
