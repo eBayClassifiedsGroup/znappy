@@ -353,11 +353,11 @@ if __name__ == "__main__":
         if not args['--skip-replication']:
             logger.info('Starting replication until GTID: {}'.format(gtid))
             start_replication_until(conn, gtid)
+
+            logger.info('Waiting for replication to ketchup')
+            wait_for_replication(conn)
         else:
             logger.info('Skipping replication')
-
-        logger.info('Waiting for replication to ketchup')
-        wait_for_replication(conn)
 
         logger.info('Connect to mysql using: mysql -S {}'.format(mysqld_arguments['socket']))
         logger.info('Now entering sleep.. Press Ctrl+C to stop the mysqld service and cleanup the mountpoint')
