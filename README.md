@@ -1,28 +1,67 @@
-# Snappy
+# Znappy
+
+Znappy is a distributed, decentralized agent for creating snapshots.
+
+The currenty drivers are based on ZFS and MySQL, using ZFS to create snapshots of the MySQL data. However,
+due to it's modulair/event-driven design, this can easily be extended.
+
+Znappy works by storing information in Consul and using the locking mechanism provided by Consul to desync
+the creation of states/snapshots.
 
 
-## Creating driver
-A driver MUST accept any number of arguments for registered handlers, for example:
+## Installation
 
-```python
-    def create(self, *args, **kwargs):
-        return True, ''
+For debian, znappy package can be build using:
+
+```shell
+fpm \
+    -s python \
+    -t deb \
+    --no-python-fix-dependencies \
+    --no-python-fix-name \
+    --deb-upstart  etc/init/znappy-daemon \
+    setup.py
 ```
 
-If this is not honored, the driver may crash and cause disruptions in the agent.
+## Configuration
 
-For the return of any registered function, it MUST return a tuple of type (bool, string), if
-you wish to stop any further execution of the agent, return an exception of the type SnappyDriverException
-located in snappy.exceptions
+For the agent to work, it expects 2 configuration files in `/etc/znappy`
 
- ( Does not exists yet)
+The `cluster.yaml` file will not be used by the agent, but is needed in the console to create the cluster
+configuration in Consul, this can be triggered by `znappy config update` (see `znappy config --help`)
 
-```python
-from snappy.exceptions import SnappyDriverException
+### client.yaml
+```yaml
+---
+cluster: foo
+log-level: WARN
+consul-host: localhost
+consul-port: 8500
+```
 
-    def create(self, *args, **kwargs):
-        if something_went_booboo:
-            raise SnappyDriverException(1234)
-        
-        return True, ''
+and..
+
+### cluster.yaml
+```yaml
+---
+config-version: 1
+drivers:
+  znappy.backend.mysql:
+    mycnf_path: /root/.my.cnf
+    mycnf_section: client
+    failover_creds: /etc/mysql/failover.cnf
+  znappy.snapshot.zfs:
+    filesystem: data/mysql
+    # Dataset properties to copy when recoverying snapshots
+    properties:
+      - atime
+      - compression
+      - mountpoint
+      - primarycache
+      - recordsize
+      - sync
+  znappy.monitor.snapshot: {}
+snapshot:
+  min_age: 900
+  rotate: 48
 ```

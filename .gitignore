@@ -1,5 +1,3 @@
 .*.swp
 *.pyc
-dev
-mockdata.py
 .idea
